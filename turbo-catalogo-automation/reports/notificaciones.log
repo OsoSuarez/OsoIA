@@ -1,0 +1,29 @@
+2026-10-12T23:54:11.421563+00:00 [analista_catalogo] SNK-003 (peso_kg): pendiente_aprobacion — requiere aprobación: alta rotación
+2026-10-12T23:54:11.424107+00:00 [analista_catalogo] GSE-009 (peso_kg): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 280.4% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:11.426219+00:00 [analista_catalogo] BAR-001 (net_quantity): pendiente_aprobacion — requiere aprobación: desvío 100.0% > 30.0%
+2026-10-12T23:54:11.428377+00:00 [analista_catalogo] QUE-005 (peso_kg): fuentes_contradictorias — dos fuentes oficiales difieren; decide el analista: ficha_proveedor=0.33 (lacteos_del_sur.md#2); catalogo_fabricante=0.55 (QUE-005.md#0); foto_etiqueta=0.33 (QUE-005.png)
+2026-10-12T23:54:11.431149+00:00 [analista_catalogo] YOG-004 (peso_kg): pendiente_aprobacion — requiere aprobación: desvío 832.0% > 30.0%
+2026-10-12T23:54:11.433348+00:00 [analista_catalogo] BAR-006 (peso_kg): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 169.8% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:11.435086+00:00 [analista_catalogo] BAR-006 (alto_cm): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 138.1% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:11.436951+00:00 [analista_catalogo] BAR-002 (net_quantity): sin_fuente_confiable — ninguna fuente permitida tiene el dato; se notifica al analista
+2026-10-12T23:54:11.438719+00:00 [analista_catalogo] YOG-006 (alto_cm): pendiente_aprobacion — requiere aprobación: desvío 89.2% > 30.0%
+2026-10-12T23:54:11.441222+00:00 [analista_catalogo] SNK-005 (peso_kg): pendiente_aprobacion — requiere aprobación: confianza media
+2026-10-12T23:54:11.444251+00:00 [analista_catalogo] BAR-006 (ancho_cm): sin_fuente_confiable — ninguna fuente permitida tiene el dato; se notifica al analista
+2026-10-12T23:54:11.447315+00:00 [analista_catalogo] GSE-001 (*): dato_incompleto — PESO_KG=1550.0 fuera de rango físico [0.001, 50.0]
+2026-10-12T23:54:11.449518+00:00 [analista_catalogo] SNK-008 (*): dato_incompleto — falta ALTO_CM
+2026-10-12T23:54:11.489753+00:00 [lider_catalogo] [ESCALADO] BAR-002: sin respuesta del analista en el plazo; no se aplica nada sin firma
+2026-10-12T23:54:11.490119+00:00 [lider_catalogo] [ESCALADO] GSE-001: sin respuesta del analista en el plazo; no se aplica nada sin firma
+2026-10-12T23:54:11.490351+00:00 [lider_catalogo] [ESCALADO] SNK-008: sin respuesta del analista en el plazo; no se aplica nada sin firma
+2026-10-12T23:54:13.029474+00:00 [analista_catalogo] SNK-003 (peso_kg): pendiente_aprobacion — requiere aprobación: alta rotación
+2026-10-12T23:54:13.031217+00:00 [analista_catalogo] GSE-009 (peso_kg): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 280.4% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:13.032890+00:00 [analista_catalogo] BAR-001 (net_quantity): pendiente_aprobacion — requiere aprobación: desvío 100.0% > 30.0%
+2026-10-12T23:54:13.034496+00:00 [analista_catalogo] QUE-005 (peso_kg): fuentes_contradictorias — dos fuentes oficiales difieren; decide el analista: ficha_proveedor=0.33 (lacteos_del_sur.md#2); catalogo_fabricante=0.55 (QUE-005.md#0); foto_etiqueta=0.33 (QUE-005.png)
+2026-10-12T23:54:13.036022+00:00 [analista_catalogo] YOG-004 (peso_kg): pendiente_aprobacion — requiere aprobación: desvío 832.0% > 30.0%
+2026-10-12T23:54:13.037576+00:00 [analista_catalogo] BAR-006 (peso_kg): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 169.8% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:13.039187+00:00 [analista_catalogo] BAR-006 (alto_cm): bloqueado_pendiente_aprobacion — sin fuente permitida y desvío 138.1% > 30.0%: riesgo de despacho/slotting
+2026-10-12T23:54:13.040871+00:00 [analista_catalogo] BAR-002 (net_quantity): sin_fuente_confiable — ninguna fuente permitida tiene el dato; se notifica al analista
+2026-10-12T23:54:13.042469+00:00 [analista_catalogo] YOG-006 (alto_cm): pendiente_aprobacion — requiere aprobación: desvío 89.2% > 30.0%
+2026-10-12T23:54:13.044110+00:00 [analista_catalogo] SNK-005 (peso_kg): pendiente_aprobacion — requiere aprobación: confianza media
+2026-10-12T23:54:13.045828+00:00 [analista_catalogo] BAR-006 (ancho_cm): sin_fuente_confiable — ninguna fuente permitida tiene el dato; se notifica al analista
+2026-10-12T23:54:13.048674+00:00 [analista_catalogo] GSE-001 (*): dato_incompleto — PESO_KG=1550.0 fuera de rango físico [0.001, 50.0]
+2026-10-12T23:54:13.050528+00:00 [analista_catalogo] SNK-008 (*): dato_incompleto — falta ALTO_CM

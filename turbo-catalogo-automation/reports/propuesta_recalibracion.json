@@ -1,0 +1,59 @@
+{
+  "umbrales_actuales": "v1",
+  "diagnostico": {
+    "decisiones": 10,
+    "rechazos": 3,
+    "override_rate": 0.3,
+    "motivos": {
+      "pack_en_subcategoria_de_unidades": 3
+    },
+    "cambios": {
+      "separar_packs": true
+    },
+    "razones": [
+      "3 rechazo(s) humano(s) de packs legítimos marcados contra el rango de unidades sueltas"
+    ]
+  },
+  "umbrales_candidatos": {
+    "version": "v2",
+    "peso_min_kg": 0.001,
+    "peso_max_kg": 50.0,
+    "dim_min_cm": 0.5,
+    "dim_max_cm": 200.0,
+    "iqr_k": 1.5,
+    "min_skus_por_grupo": 4,
+    "separar_packs": true,
+    "desvio_rango_max_pct": 30.0,
+    "dif_fuentes_alta_pct": 5.0,
+    "dif_fuentes_media_pct": 15.0,
+    "tolerancia_nombre_pct": 10.0,
+    "top_k": 4,
+    "similitud_min": 0.15,
+    "hitl_timeout_horas_correccion": 48,
+    "hitl_bloqueo_expira": false,
+    "fraccion_auditoria": 0.15,
+    "alerta_caida_finalizacion_pp": 15.0,
+    "alerta_override_rate": 0.2,
+    "piso_tasa_finalizacion": 0.7,
+    "costo_max_usd_por_sku": 0.5
+  },
+  "eval_sombra": {
+    "exactitud_estado": {
+      "actual": 0.9831,
+      "candidata": 1.0
+    },
+    "detector_precision": {
+      "actual": 0.9167,
+      "candidata": 1.0
+    },
+    "detector_recall": {
+      "actual": 1.0,
+      "candidata": 1.0
+    },
+    "fidelidad_fuente": {
+      "actual": 1.0,
+      "candidata": 1.0
+    }
+  },
+  "recomendacion": "aplicar (requiere aprobación del líder de Catálogo)"
+}

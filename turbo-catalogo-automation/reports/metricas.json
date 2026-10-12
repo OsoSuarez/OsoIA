@@ -1,0 +1,82 @@
+{
+  "kpis": {
+    "skus_escaneados": 59,
+    "conteo_estados": {
+      "ok": 47,
+      "pendiente_aprobacion": 5,
+      "dato_incompleto": 2,
+      "bloqueado_pendiente_aprobacion": 2,
+      "corregido": 1,
+      "fuentes_contradictorias": 1,
+      "sin_fuente_confiable": 1
+    },
+    "tasa_finalizacion": 0.8136,
+    "skus_a_revision_humana": 11,
+    "tasa_inconsistencia_agente1": 0.1695,
+    "latencia_agente1_s": 0.0731,
+    "latencia_agente2_mediana_s": 0.0086,
+    "latencia_agente2_p95_s": 0.0102,
+    "costo_llm_usd_por_sku_investigado": 0.0
+  },
+  "alertas": [],
+  "metricas": {
+    "contadores": {
+      "skus_leidos": 59,
+      "skus_dato_incompleto": 2,
+      "fallback_parsing": 2,
+      "pdfs_parseados": 2,
+      "chunks_indexados": 12,
+      "skus_inconsistentes": 10,
+      "rag_chunks_descartados_identidad": 24,
+      "fotos_leidas": 4,
+      "agente2_estado_pendiente_aprobacion": 5,
+      "agente2_estado_bloqueado_pendiente_aprobacion": 3,
+      "agente2_estado_fuentes_contradictorias": 1,
+      "falsos_positivos_confirmados_por_fuente": 3,
+      "agente2_estado_ok": 3,
+      "agente2_estado_sin_fuente_confiable": 2,
+      "agente2_estado_corregido": 1,
+      "correcciones_escritas": 1,
+      "hitl_encolados": 13,
+      "notificaciones": 13
+    },
+    "latencias": {
+      "carga_catalogo": {
+        "n": 1,
+        "mediana_s": 0.0029,
+        "p95_s": 0.0029
+      },
+      "parsing_pdf": {
+        "n": 2,
+        "mediana_s": 0.0103,
+        "p95_s": 0.0111
+      },
+      "agente1_escaneo": {
+        "n": 1,
+        "mediana_s": 0.0731,
+        "p95_s": 0.0731
+      },
+      "rag_busqueda": {
+        "n": 15,
+        "mediana_s": 0.006,
+        "p95_s": 0.0074
+      },
+      "vision_rotulo": {
+        "n": 4,
+        "mediana_s": 0.0002,
+        "p95_s": 0.0002
+      },
+      "agente2_por_sku": {
+        "n": 15,
+        "mediana_s": 0.0086,
+        "p95_s": 0.0102
+      },
+      "corrida_total": {
+        "n": 1,
+        "mediana_s": 0.4804,
+        "p95_s": 0.4804
+      }
+    },
+    "costo_usd_total": 0.0
+  }
+}

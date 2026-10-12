@@ -1,0 +1,26 @@
+{
+  "GAL-007": {
+    "peso_kg": 0.32,
+    "dimensiones_cm": "19,5 x 7,2 x 5,8 cm",
+    "legible": true,
+    "texto_detectado": "TRIGAL - GALLETITAS AVENA MIEL | PESO BRUTO 0,32 kg | DIM. LxAxH 19,5 x 7,2 x 5,8 cm"
+  },
+  "SNK-005": {
+    "peso_kg": 0.17,
+    "dimensiones_cm": "30,5 x 8,5 x 21,5 cm",
+    "legible": true,
+    "texto_detectado": "RUTA SNACKS - PAPAS ONDULADAS 150 g | PESO BRUTO 0,17 kg | DIM. LxAxH 30,5 x 8,5 x 21,5 cm"
+  },
+  "QUE-005": {
+    "peso_kg": 0.33,
+    "dimensiones_cm": "10,8 x 10,8 x 6,2 cm",
+    "legible": true,
+    "texto_detectado": "SUR - QUESO UNTABLE CIBOULETTE 300 g | PESO BRUTO 0,33 kg | DIM. LxAxH 10,8 x 10,8 x 6,2 cm"
+  },
+  "SNK-003": {
+    "peso_kg": 0.17,
+    "dimensiones_cm": "30 x 8 x 22 cm",
+    "legible": true,
+    "texto_detectado": "CROCANTE - PAPAS POLLO 150 g | PESO BRUTO 0,17 kg | DIM. LxAxH 30 x 8 x 22 cm"
+  }
+}

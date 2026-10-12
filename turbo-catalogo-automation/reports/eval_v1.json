@@ -1,0 +1,123 @@
+{
+  "etiqueta": "v1",
+  "umbrales_version": "v1",
+  "skus": 59,
+  "exactitud_estado": 0.9831,
+  "detector_precision": 0.9167,
+  "detector_recall": 1.0,
+  "exactitud_valor_propuesto": 1.0,
+  "fidelidad_fuente": 1.0,
+  "verdaderos_positivos": 11,
+  "falsos_positivos": 1,
+  "falsos_negativos": 0,
+  "errores": [
+    {
+      "sku_id": "BAR-006",
+      "esperado": "ok",
+      "obtenido": "bloqueado_pendiente_aprobacion",
+      "nota": "pack 3x25 g legítimo; v1 lo marca (falso positivo)"
+    }
+  ],
+  "jurado": [
+    {
+      "sku_id": "SNK-003",
+      "campo": "peso_kg",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#1"
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "net_quantity",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#2"
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "peso_kg",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#2"
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "ancho_cm",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#2"
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "alto_cm",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#2"
+    },
+    {
+      "sku_id": "YOG-004",
+      "campo": "peso_kg",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "lacteos_del_sur.md#0"
+    },
+    {
+      "sku_id": "YOG-006",
+      "campo": "alto_cm",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "lacteos_del_sur.md#1"
+    },
+    {
+      "sku_id": "GAL-007",
+      "campo": "peso_kg",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "snacks_pampa.md#0"
+    },
+    {
+      "sku_id": "SNK-005",
+      "campo": "peso_kg",
+      "aplica": true,
+      "respaldado": true,
+      "explicacion": "coincidencia literal en la evidencia citada",
+      "juez": "reglas",
+      "cita": "SNK-005.png"
+    }
+  ],
+  "kpis_corrida": {
+    "skus_escaneados": 59,
+    "conteo_estados": {
+      "ok": 47,
+      "pendiente_aprobacion": 5,
+      "dato_incompleto": 2,
+      "bloqueado_pendiente_aprobacion": 2,
+      "corregido": 1,
+      "fuentes_contradictorias": 1,
+      "sin_fuente_confiable": 1
+    },
+    "tasa_finalizacion": 0.8136,
+    "skus_a_revision_humana": 11,
+    "tasa_inconsistencia_agente1": 0.1695,
+    "latencia_agente1_s": 0.0568,
+    "latencia_agente2_mediana_s": 0.0052,
+    "latencia_agente2_p95_s": 0.0067,
+    "costo_llm_usd_por_sku_investigado": 0.0
+  }
+}

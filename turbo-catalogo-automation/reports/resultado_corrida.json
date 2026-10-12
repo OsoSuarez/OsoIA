@@ -1,0 +1,583 @@
+{
+  "trace_id": "run-a25fc95ed8",
+  "fecha": "2026-10-12T23:54:11.455924+00:00",
+  "fuente_catalogo": "csv_muestra",
+  "umbrales": {
+    "version": "v1",
+    "peso_min_kg": 0.001,
+    "peso_max_kg": 50.0,
+    "dim_min_cm": 0.5,
+    "dim_max_cm": 200.0,
+    "iqr_k": 1.5,
+    "min_skus_por_grupo": 4,
+    "separar_packs": false,
+    "desvio_rango_max_pct": 30.0,
+    "dif_fuentes_alta_pct": 5.0,
+    "dif_fuentes_media_pct": 15.0,
+    "tolerancia_nombre_pct": 10.0,
+    "top_k": 4,
+    "similitud_min": 0.15,
+    "hitl_timeout_horas_correccion": 48,
+    "hitl_bloqueo_expira": false,
+    "fraccion_auditoria": 0.15,
+    "alerta_caida_finalizacion_pp": 15.0,
+    "alerta_override_rate": 0.2,
+    "piso_tasa_finalizacion": 0.7,
+    "costo_max_usd_por_sku": 0.5
+  },
+  "modo_seguro": false,
+  "kpis": {
+    "skus_escaneados": 59,
+    "conteo_estados": {
+      "ok": 47,
+      "pendiente_aprobacion": 5,
+      "dato_incompleto": 2,
+      "bloqueado_pendiente_aprobacion": 2,
+      "corregido": 1,
+      "fuentes_contradictorias": 1,
+      "sin_fuente_confiable": 1
+    },
+    "tasa_finalizacion": 0.8136,
+    "skus_a_revision_humana": 11,
+    "tasa_inconsistencia_agente1": 0.1695,
+    "latencia_agente1_s": 0.0731,
+    "latencia_agente2_mediana_s": 0.0086,
+    "latencia_agente2_p95_s": 0.0102,
+    "costo_llm_usd_por_sku_investigado": 0.0
+  },
+  "alertas": [],
+  "estados": {
+    "GSE-001": "dato_incompleto",
+    "GSE-002": "ok",
+    "GSE-003": "ok",
+    "GSE-004": "ok",
+    "GSE-005": "ok",
+    "GSE-006": "ok",
+    "GSE-007": "ok",
+    "GSE-008": "ok",
+    "GSE-009": "bloqueado_pendiente_aprobacion",
+    "YOG-001": "ok",
+    "YOG-002": "ok",
+    "YOG-003": "ok",
+    "YOG-004": "pendiente_aprobacion",
+    "YOG-005": "ok",
+    "YOG-006": "pendiente_aprobacion",
+    "YOG-007": "ok",
+    "YOG-008": "ok",
+    "GAL-001": "ok",
+    "GAL-002": "ok",
+    "GAL-003": "ok",
+    "GAL-004": "ok",
+    "GAL-005": "ok",
+    "GAL-006": "ok",
+    "GAL-007": "corregido",
+    "GAL-008": "ok",
+    "GAL-009": "ok",
+    "SNK-001": "ok",
+    "SNK-002": "ok",
+    "SNK-003": "pendiente_aprobacion",
+    "SNK-004": "ok",
+    "SNK-005": "pendiente_aprobacion",
+    "SNK-006": "ok",
+    "SNK-007": "ok",
+    "SNK-008": "dato_incompleto",
+    "SNK-009": "ok",
+    "SNK-010": "ok",
+    "SNK-011": "ok",
+    "SNK-012": "ok",
+    "QUE-001": "ok",
+    "QUE-002": "ok",
+    "QUE-003": "ok",
+    "QUE-004": "ok",
+    "QUE-005": "fuentes_contradictorias",
+    "QUE-006": "ok",
+    "RES-001": "ok",
+    "RES-002": "ok",
+    "RES-003": "ok",
+    "RES-004": "ok",
+    "RES-005": "ok",
+    "POS-001": "ok",
+    "POS-002": "ok",
+    "POS-003": "ok",
+    "POS-004": "ok",
+    "BAR-001": "pendiente_aprobacion",
+    "BAR-002": "sin_fuente_confiable",
+    "BAR-003": "ok",
+    "BAR-004": "ok",
+    "BAR-005": "ok",
+    "BAR-006": "bloqueado_pendiente_aprobacion"
+  },
+  "resultados": [
+    {
+      "sku_id": "SNK-003",
+      "campo": "peso_kg",
+      "valor_actual": 0.21,
+      "desvio_vs_rango_pct": 7.7,
+      "rotacion": "alta",
+      "estado": "pendiente_aprobacion",
+      "accion_propuesta": "corregir_y_notificar",
+      "valor_propuesto": 0.17,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 0.17,
+          "cita": "snacks_pampa.md#1",
+          "oficial": true
+        },
+        {
+          "fuente": "foto_etiqueta",
+          "valor": 0.17,
+          "cita": "SNK-003.png",
+          "oficial": false
+        }
+      ],
+      "motivo": "requiere aprobación: alta rotación",
+      "umbrales_version": "v1",
+      "rango": [
+        0.155,
+        0.195
+      ]
+    },
+    {
+      "sku_id": "GSE-009",
+      "campo": "peso_kg",
+      "valor_actual": 6.4,
+      "desvio_vs_rango_pct": 280.4,
+      "rotacion": "media",
+      "estado": "bloqueado_pendiente_aprobacion",
+      "accion_propuesta": "bloquear_pendiente_aprobacion",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": null,
+      "fuente_principal": null,
+      "evidencias": [],
+      "motivo": "sin fuente permitida y desvío 280.4% > 30.0%: riesgo de despacho/slotting",
+      "umbrales_version": "v1",
+      "rango": [
+        1.4974,
+        1.6826
+      ]
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "net_quantity",
+      "valor_actual": 0.0,
+      "desvio_vs_rango_pct": 100.0,
+      "rotacion": "media",
+      "estado": "pendiente_aprobacion",
+      "accion_propuesta": "corregir_y_notificar",
+      "valor_propuesto": 16.0,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 16.0,
+          "cita": "snacks_pampa.md#2",
+          "oficial": true
+        }
+      ],
+      "motivo": "requiere aprobación: desvío 100.0% > 30.0%",
+      "umbrales_version": "v1",
+      "rango": null
+    },
+    {
+      "sku_id": "QUE-005",
+      "campo": "peso_kg",
+      "valor_actual": 0.55,
+      "desvio_vs_rango_pct": 55.2,
+      "rotacion": "media",
+      "estado": "fuentes_contradictorias",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": 40.0,
+      "fuente_principal": null,
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 0.33,
+          "cita": "lacteos_del_sur.md#2",
+          "oficial": true
+        },
+        {
+          "fuente": "catalogo_fabricante",
+          "valor": 0.55,
+          "cita": "QUE-005.md#0",
+          "oficial": true
+        },
+        {
+          "fuente": "foto_etiqueta",
+          "valor": 0.33,
+          "cita": "QUE-005.png",
+          "oficial": false
+        }
+      ],
+      "motivo": "dos fuentes oficiales difieren; decide el analista: ficha_proveedor=0.33 (lacteos_del_sur.md#2); catalogo_fabricante=0.55 (QUE-005.md#0); foto_etiqueta=0.33 (QUE-005.png)",
+      "umbrales_version": "v1",
+      "rango": [
+        0.3131,
+        0.3544
+      ]
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "peso_kg",
+      "valor_actual": 0.02,
+      "desvio_vs_rango_pct": 29.8,
+      "rotacion": "media",
+      "estado": "ok",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": 0.02,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 0.02,
+          "cita": "snacks_pampa.md#2",
+          "oficial": true
+        }
+      ],
+      "motivo": "valor confirmado por ficha_proveedor: falso positivo del rango, sin cambios",
+      "umbrales_version": "v1",
+      "rango": [
+        0.0285,
+        0.0315
+      ]
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "ancho_cm",
+      "valor_actual": 3.0,
+      "desvio_vs_rango_pct": 1.3,
+      "rotacion": "media",
+      "estado": "ok",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": 3.0,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 3.0,
+          "cita": "snacks_pampa.md#2",
+          "oficial": true
+        }
+      ],
+      "motivo": "valor confirmado por ficha_proveedor: falso positivo del rango, sin cambios",
+      "umbrales_version": "v1",
+      "rango": [
+        3.04,
+        3.36
+      ]
+    },
+    {
+      "sku_id": "BAR-001",
+      "campo": "alto_cm",
+      "valor_actual": 1.7,
+      "desvio_vs_rango_pct": 0.6,
+      "rotacion": "media",
+      "estado": "ok",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": 1.7,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 1.7,
+          "cita": "snacks_pampa.md#2",
+          "oficial": true
+        }
+      ],
+      "motivo": "valor confirmado por ficha_proveedor: falso positivo del rango, sin cambios",
+      "umbrales_version": "v1",
+      "rango": [
+        1.71,
+        1.89
+      ]
+    },
+    {
+      "sku_id": "YOG-004",
+      "campo": "peso_kg",
+      "valor_actual": 10.3,
+      "desvio_vs_rango_pct": 832.0,
+      "rotacion": "baja",
+      "estado": "pendiente_aprobacion",
+      "accion_propuesta": "corregir_y_notificar",
+      "valor_propuesto": 1.05,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 1.05,
+          "cita": "lacteos_del_sur.md#0",
+          "oficial": true
+        },
+        {
+          "fuente": "catalogo_fabricante",
+          "valor": 1.05,
+          "cita": "YOG-004.md#0",
+          "oficial": true
+        }
+      ],
+      "motivo": "requiere aprobación: desvío 832.0% > 30.0%",
+      "umbrales_version": "v1",
+      "rango": [
+        0.9874,
+        1.1051
+      ]
+    },
+    {
+      "sku_id": "BAR-006",
+      "campo": "peso_kg",
+      "valor_actual": 0.085,
+      "desvio_vs_rango_pct": 169.8,
+      "rotacion": "baja",
+      "estado": "bloqueado_pendiente_aprobacion",
+      "accion_propuesta": "bloquear_pendiente_aprobacion",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": null,
+      "fuente_principal": null,
+      "evidencias": [],
+      "motivo": "sin fuente permitida y desvío 169.8% > 30.0%: riesgo de despacho/slotting",
+      "umbrales_version": "v1",
+      "rango": [
+        0.0285,
+        0.0315
+      ]
+    },
+    {
+      "sku_id": "BAR-006",
+      "campo": "alto_cm",
+      "valor_actual": 4.5,
+      "desvio_vs_rango_pct": 138.1,
+      "rotacion": "baja",
+      "estado": "bloqueado_pendiente_aprobacion",
+      "accion_propuesta": "bloquear_pendiente_aprobacion",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": null,
+      "fuente_principal": null,
+      "evidencias": [],
+      "motivo": "sin fuente permitida y desvío 138.1% > 30.0%: riesgo de despacho/slotting",
+      "umbrales_version": "v1",
+      "rango": [
+        1.71,
+        1.89
+      ]
+    },
+    {
+      "sku_id": "BAR-002",
+      "campo": "net_quantity",
+      "valor_actual": 1.0,
+      "desvio_vs_rango_pct": 96.0,
+      "rotacion": "baja",
+      "estado": "sin_fuente_confiable",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": null,
+      "fuente_principal": null,
+      "evidencias": [],
+      "motivo": "ninguna fuente permitida tiene el dato; se notifica al analista",
+      "umbrales_version": "v1",
+      "rango": null
+    },
+    {
+      "sku_id": "YOG-006",
+      "campo": "alto_cm",
+      "valor_actual": 2.35,
+      "desvio_vs_rango_pct": 89.2,
+      "rotacion": "baja",
+      "estado": "pendiente_aprobacion",
+      "accion_propuesta": "corregir_y_notificar",
+      "valor_propuesto": 23.5,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 23.5,
+          "cita": "lacteos_del_sur.md#1",
+          "oficial": true
+        }
+      ],
+      "motivo": "requiere aprobación: desvío 89.2% > 30.0%",
+      "umbrales_version": "v1",
+      "rango": [
+        21.825,
+        24.675
+      ]
+    },
+    {
+      "sku_id": "GAL-007",
+      "campo": "peso_kg",
+      "valor_actual": 0.4,
+      "desvio_vs_rango_pct": 15.4,
+      "rotacion": "baja",
+      "estado": "corregido",
+      "accion_propuesta": "corregir_directo",
+      "valor_propuesto": 0.32,
+      "confianza": "alta",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "ficha_proveedor",
+      "evidencias": [
+        {
+          "fuente": "ficha_proveedor",
+          "valor": 0.32,
+          "cita": "snacks_pampa.md#0",
+          "oficial": true
+        },
+        {
+          "fuente": "catalogo_fabricante",
+          "valor": 0.32,
+          "cita": "GAL-007.md#0",
+          "oficial": true
+        },
+        {
+          "fuente": "foto_etiqueta",
+          "valor": 0.32,
+          "cita": "GAL-007.png",
+          "oficial": false
+        }
+      ],
+      "motivo": "fuente oficial, confianza alta, desvío ≤30%, no alta rotación",
+      "umbrales_version": "v1",
+      "rango": [
+        0.3035,
+        0.3465
+      ]
+    },
+    {
+      "sku_id": "SNK-005",
+      "campo": "peso_kg",
+      "valor_actual": 0.21,
+      "desvio_vs_rango_pct": 7.7,
+      "rotacion": "baja",
+      "estado": "pendiente_aprobacion",
+      "accion_propuesta": "corregir_y_notificar",
+      "valor_propuesto": 0.17,
+      "confianza": "media",
+      "diferencia_entre_fuentes_pct": 0.0,
+      "fuente_principal": "foto_etiqueta",
+      "evidencias": [
+        {
+          "fuente": "foto_etiqueta",
+          "valor": 0.17,
+          "cita": "SNK-005.png",
+          "oficial": false
+        },
+        {
+          "fuente": "historico_correcciones",
+          "valor": 0.17,
+          "cita": "historico_correcciones.csv@2026-03-14",
+          "oficial": false
+        }
+      ],
+      "motivo": "requiere aprobación: confianza media",
+      "umbrales_version": "v1",
+      "rango": [
+        0.155,
+        0.195
+      ]
+    },
+    {
+      "sku_id": "BAR-006",
+      "campo": "ancho_cm",
+      "valor_actual": 3.5,
+      "desvio_vs_rango_pct": 4.2,
+      "rotacion": "baja",
+      "estado": "sin_fuente_confiable",
+      "accion_propuesta": "ninguna",
+      "valor_propuesto": null,
+      "confianza": null,
+      "diferencia_entre_fuentes_pct": null,
+      "fuente_principal": null,
+      "evidencias": [],
+      "motivo": "ninguna fuente permitida tiene el dato; se notifica al analista",
+      "umbrales_version": "v1",
+      "rango": [
+        3.04,
+        3.36
+      ]
+    }
+  ],
+  "auditoria_muestra": [
+    "GAL-007"
+  ],
+  "escalados_por_timeout": [],
+  "modelo_embedding": "hash-local-512",
+  "metricas": {
+    "contadores": {
+      "skus_leidos": 59,
+      "skus_dato_incompleto": 2,
+      "fallback_parsing": 2,
+      "pdfs_parseados": 2,
+      "chunks_indexados": 12,
+      "skus_inconsistentes": 10,
+      "rag_chunks_descartados_identidad": 24,
+      "fotos_leidas": 4,
+      "agente2_estado_pendiente_aprobacion": 5,
+      "agente2_estado_bloqueado_pendiente_aprobacion": 3,
+      "agente2_estado_fuentes_contradictorias": 1,
+      "falsos_positivos_confirmados_por_fuente": 3,
+      "agente2_estado_ok": 3,
+      "agente2_estado_sin_fuente_confiable": 2,
+      "agente2_estado_corregido": 1,
+      "correcciones_escritas": 1,
+      "hitl_encolados": 13,
+      "notificaciones": 13
+    },
+    "latencias": {
+      "carga_catalogo": {
+        "n": 1,
+        "mediana_s": 0.0029,
+        "p95_s": 0.0029
+      },
+      "parsing_pdf": {
+        "n": 2,
+        "mediana_s": 0.0103,
+        "p95_s": 0.0111
+      },
+      "agente1_escaneo": {
+        "n": 1,
+        "mediana_s": 0.0731,
+        "p95_s": 0.0731
+      },
+      "rag_busqueda": {
+        "n": 15,
+        "mediana_s": 0.006,
+        "p95_s": 0.0074
+      },
+      "vision_rotulo": {
+        "n": 4,
+        "mediana_s": 0.0002,
+        "p95_s": 0.0002
+      },
+      "agente2_por_sku": {
+        "n": 15,
+        "mediana_s": 0.0086,
+        "p95_s": 0.0102
+      },
+      "corrida_total": {
+        "n": 1,
+        "mediana_s": 0.4804,
+        "p95_s": 0.4804
+      }
+    },
+    "costo_usd_total": 0.0
+  }
+}

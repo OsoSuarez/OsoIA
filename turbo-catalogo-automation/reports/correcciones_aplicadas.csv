@@ -1,0 +1,8 @@
+ts,sku_id,campo,valor_anterior,valor_nuevo,fuente,umbrales_version,modo
+2026-10-12T23:54:11.417839+00:00,GAL-007,peso_kg,0.4,0.32,ficha_proveedor (snacks_pampa.md#0),v1,dry_run
+2026-10-12T23:54:11.462031+00:00,YOG-004,peso_kg,10.3,1.05,aprobación analista_catalogo,v1,dry_run
+2026-10-12T23:54:11.465443+00:00,YOG-006,alto_cm,2.35,23.5,aprobación analista_catalogo,v1,dry_run
+2026-10-12T23:54:11.468528+00:00,SNK-003,peso_kg,0.21,0.17,aprobación analista_catalogo,v1,dry_run
+2026-10-12T23:54:11.471295+00:00,SNK-005,peso_kg,0.21,0.17,aprobación analista_catalogo,v1,dry_run
+2026-10-12T23:54:11.473950+00:00,BAR-001,net_quantity,0.0,16.0,aprobación analista_catalogo,v1,dry_run
+2026-10-12T23:54:11.476715+00:00,QUE-005,peso_kg,0.55,0.33,aprobación analista_catalogo,v1,dry_run

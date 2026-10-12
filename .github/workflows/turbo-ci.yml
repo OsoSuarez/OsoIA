@@ -1,0 +1,25 @@
+name: turbo-catalogo-automation
+on:
+  push:
+    paths: ["turbo-catalogo-automation/**", ".github/workflows/turbo-ci.yml"]
+  pull_request:
+    paths: ["turbo-catalogo-automation/**"]
+jobs:
+  test-y-eval:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: turbo-catalogo-automation
+    env:
+      EMBEDDINGS: hash
+      MODO_OFFLINE: "1"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - name: Smoke tests
+        run: pytest -q
+      - name: Compuerta de evaluación (golden set)
+        run: python -m src.evals --min-exactitud 0.95

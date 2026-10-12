@@ -1,0 +1,69 @@
+{
+  "GSE-001": {
+    "estado": "dato_incompleto",
+    "motivo": "peso fuera de rango físico (gramos cargados como kg)"
+  },
+  "GSE-009": {
+    "estado": "bloqueado_pendiente_aprobacion",
+    "motivo": "peso del bulto cargado como unidad, sin fuente"
+  },
+  "YOG-004": {
+    "estado": "pendiente_aprobacion",
+    "campo": "peso_kg",
+    "valor": 1.05
+  },
+  "YOG-006": {
+    "estado": "pendiente_aprobacion",
+    "campo": "alto_cm",
+    "valor": 23.5
+  },
+  "GAL-007": {
+    "estado": "corregido",
+    "campo": "peso_kg",
+    "valor": 0.32
+  },
+  "SNK-003": {
+    "estado": "pendiente_aprobacion",
+    "campo": "peso_kg",
+    "valor": 0.17,
+    "motivo": "alta rotación"
+  },
+  "SNK-005": {
+    "estado": "pendiente_aprobacion",
+    "campo": "peso_kg",
+    "valor": 0.17,
+    "motivo": "confianza media"
+  },
+  "SNK-008": {
+    "estado": "dato_incompleto",
+    "motivo": "falta alto_cm"
+  },
+  "QUE-005": {
+    "estado": "fuentes_contradictorias"
+  },
+  "BAR-001": {
+    "estado": "pendiente_aprobacion",
+    "campo": "net_quantity",
+    "valor": 16
+  },
+  "BAR-002": {
+    "estado": "sin_fuente_confiable",
+    "campo": "net_quantity"
+  },
+  "BAR-006": {
+    "estado": "ok",
+    "motivo": "pack 3x25 g legítimo; v1 lo marca (falso positivo)"
+  },
+  "RES-004": {
+    "estado": "ok",
+    "motivo": "500 G = 0,5 KG tras estandarizar unidad"
+  },
+  "POS-001": {
+    "estado": "ok",
+    "motivo": "6x70 g = 420 g"
+  },
+  "GAL-009": {
+    "estado": "ok",
+    "motivo": "3x96 g con neto unitario: lectura ambigua aceptada"
+  }
+}
