@@ -1,0 +1,363 @@
+<html>
+<head><meta charset="utf-8"><style>p,li{font-size:10.5pt;line-height:1.25;margin:0 0 5pt 0} td{font-size:9pt} h2{font-size:15pt;margin:14pt 0 4pt 0} h3{font-size:12pt;margin:10pt 0 3pt 0}</style><title>Proyecto Final Integrador — Control automático de medidas y peso del catálogo Turbo</title></head>
+<body style="font-family: Arial; font-size: 11pt; line-height: 1.35;">
+
+<p style="color:#E8590C; font-size:9pt;"><b>CODERHOUSE · AI AUTOMATION AVANZADO · PROYECTO FINAL INTEGRADOR</b></p>
+<h1 style="font-size:22pt;">Control automático de medidas y peso del catálogo de Turbo</h1>
+<p style="font-size:12pt; color:#57606A;">Flujo de automatización con IA: APIs y webhooks, RAG sobre fichas técnicas, lectura multimodal de rótulos, aprobación humana, observabilidad y evaluaciones que mejoran el sistema con cada decisión del equipo.</p>
+<p><b>Autor:</b> Jorge Suárez (Product Manager, Rappi) · <b>Fecha:</b> 12 de octubre de 2026<br>
+<b>Repositorio reproducible:</b> <a href="https://github.com/OsoSuarez/OsoIA/tree/main/turbo-catalogo-automation">github.com/OsoSuarez/OsoIA/tree/main/turbo-catalogo-automation</a><br>
+<b>Notebook de experimentación:</b> <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/notebooks/01_experimentacion.ipynb">notebooks/01_experimentacion.ipynb</a></p>
+
+<table border="1" cellpadding="6" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#FFF1E8;"><td><b>Resumen en cinco líneas</b></td></tr>
+<tr><td>1. <b>Problema:</b> el peso y las medidas del catálogo de Turbo Argentina se controlan a mano. Lo hace una sola persona, comete errores de unidad y de tipeo, y el impacto aparece tarde en el costo de envío, el slotting de los dark stores y la capacidad de reparto.<br>
+2. <b>Solución:</b> un pipeline de dos agentes. El primero detecta valores fuera del rango esperado de cada subcategoría. El segundo investiga cada caso: busca en las fichas técnicas con RAG, lee la foto del rótulo, consulta el histórico y decide con reglas explícitas qué corregir solo y qué escalar.<br>
+3. <b>Control humano:</b> bloquear un SKU activo, corregir sin fuente oficial o resolver fuentes contradictorias siempre pasa por una persona. Cada decisión queda en un registro auditable.<br>
+4. <b>Resultado reproducible</b> (59 SKUs sintéticos): 81,4% del volumen resuelto sin intervención humana, 100% de recall del detector y 100% de fidelidad a la fuente. La primera ronda de rechazos del analista generó una recalibración que llevó la exactitud de 98,3% a 100% en la evaluación automática.<br>
+5. <b>Para correrlo:</b> el repo funciona sin credenciales (modo offline) y tiene 14 smoke tests y una compuerta de evaluación en CI. Con claves de Anthropic, LlamaCloud y Snowflake usa los servicios reales sin cambiar código.</td></tr>
+</table>
+
+<h2 style="color:#E8590C;">Índice</h2>
+<p>1. Introducción y contexto del caso de uso · 2. Arquitectura del flujo · 3. Componentes clave · 4. Capturas y artefactos reproducibles · 5. Justificación de decisiones de diseño · 6. Plan de despliegue, métricas y políticas de producción · 7. Conclusiones y aprendizajes · Anexo A: autoevaluación contra la consigna</p>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">1. Introducción y contexto del caso de uso</h2>
+
+<h3>1.1 El proceso actual</h3>
+<p>Turbo es la vertical de quick-commerce de Rappi: pedidos que salen de dark stores en minutos. Cada SKU del catálogo tiene cargados su peso bruto y sus tres dimensiones (largo, ancho y alto). Esos cuatro números definen el costo de envío y la asignación de vehículo, el slotting (en qué posición del dark store entra el producto) y la capacidad de cada canasta de reparto.</p>
+<p>Hoy un analista de Catálogo valida esos datos todas las semanas contra el producto físico o la ficha del proveedor. Trabaja sobre dos frentes: los SKUs dados de alta en la semana y un backlog de reclamos de operaciones. Es un proceso 100% manual que depende de una sola persona y deja poca trazabilidad. Los errores se repiten: gramos cargados como kilos, el peso del bulto cargado como si fuera la unidad, una dimensión en decímetros.</p>
+
+<h3>1.2 Evidencia real que motivó el diseño</h3>
+<p>Antes de este proyecto se construyó una primera versión del detector y se corrió contra una muestra real de 541 SKUs extraída de Snowflake:</p>
+<ul>
+<li><b>157 SKUs (29%)</b> quedaron fuera del rango esperado de su subcategoría.</li>
+<li><b>4 de 350 SKUs (1,1%)</b> tenían el contenido neto en 0 o 1 cuando el nombre decía 16, 40 o 45 g.</li>
+<li>Aparecieron dos tipos de falso positivo que forman este diseño:
+<ul>
+<li><i>"Entraña 500 g"</i> estaba cargada en gramos mientras el resto de la subcategoría usaba kilos. El dato era correcto; faltaba estandarizar la unidad.</li>
+<li>Los packs "N x M g" son ambiguos. A veces el contenido neto es el total y a veces es el unitario.</li>
+</ul></li>
+</ul>
+<p>La conclusión fue que ningún chequeo automático debe decidir solo sobre un SKU activo. El sistema tiene que proponer, citar la fuente y dejar la decisión de alto impacto a una persona.</p>
+
+<h3>1.3 Alcance de este proyecto final</h3>
+<p>La consigna propone un caso de salud, pero también admite un entorno tecnológico. Este proyecto aplica todos los elementos pedidos a un proceso operativo real de Rappi y construye el flujo completo: disparo por webhook o corrida semanal, validación determinística, detección, investigación con RAG y visión, decisión con reglas versionadas, aprobación humana, escritura idempotente, observabilidad, evaluación y auto-mejora.</p>
+<p>Para que el artefacto sea público y reproducible, el repo trabaja con un catálogo <b>sintético</b> de 59 SKUs. Replica los patrones de error encontrados en la corrida real, con marcas ficticias. El nombre de la tabla de Snowflake y todas las credenciales viven solo en variables de entorno.</p>
+
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Caso del set de datos</b></td><td><b>Patrón real que replica</b></td><td><b>Resultado esperado</b></td></tr>
+<tr><td>GSE-001 · gaseosa con PESO_KG = 1550</td><td>gramos cargados como kilos</td><td>falla la Capa 1 → <i>dato_incompleto</i></td></tr>
+<tr><td>GSE-009 · PESO_KG = 6,4 en una botella de 1,5 L</td><td>peso del bulto cargado como unidad, sin ficha</td><td>bloqueo propuesto, requiere firma</td></tr>
+<tr><td>YOG-004 · 10,3 kg en un yogur de 1 kg</td><td>tipeo</td><td>corrección a 1,05 kg con aprobación (desvío &gt; 30%)</td></tr>
+<tr><td>GAL-007 · 0,40 kg en galletitas de 300 g</td><td>error moderado, baja rotación</td><td><b>corrección automática</b> a 0,32 kg</td></tr>
+<tr><td>SNK-003 · papas de alta rotación</td><td>error moderado en un SKU crítico</td><td>aprobación humana (alta rotación)</td></tr>
+<tr><td>QUE-005 · 0,55 kg</td><td>la ficha dice 0,33 y el fabricante 0,55</td><td><i>fuentes_contradictorias</i></td></tr>
+<tr><td>BAR-001 / BAR-002 · neto 0 y 1 g</td><td>"Barra Brava" de la corrida real</td><td>corrección con ficha / sin fuente</td></tr>
+<tr><td>RES-004, POS-001 (6x70 g), GAL-009 (3x96 g)</td><td>falsos positivos históricos</td><td>deben quedar <b>ok</b></td></tr>
+<tr><td>BAR-006 · pack 3x25 g</td><td>pack legítimo en una subcategoría de unidades</td><td>debe quedar ok; la v1 lo marca (ver 3.8)</td></tr>
+</table>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">2. Arquitectura del flujo</h2>
+<p>El flujo tiene cuatro zonas: <b>entradas</b> (eventos y fuentes de datos), <b>conocimiento y percepción</b> (parsing, base vectorial y visión), <b>orquestación</b> (API, validaciones y los dos agentes) y <b>salidas y control</b> (catálogo, cola humana, notificaciones, telemetría y evaluación). Todas las piezas son módulos Python con una sola responsabilidad. La API está hecha con FastAPI.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/01_arquitectura.png" width="624"></p>
+<p style="font-size:9.5pt; color:#57606A;"><i>Diagrama 1 — Arquitectura. Naranja: orquestación. Azul: RAG y multimodal. Verde: salidas y control. Las flechas punteadas son telemetría y realimentación.</i></p>
+
+<p><b>Dos formas de disparo:</b></p>
+<ul>
+<li><b>Por evento:</b> el sistema de catálogo llama al webhook cuando se crea o modifica un SKU. Ese SKU se procesa en segundos, comparado contra los rangos del catálogo completo.</li>
+<li><b>Semanal:</b> un scheduler llama a <code>POST /corridas/semanal</code> para recorrer todo el catálogo. En esa corrida también se recalculan los rangos, se revisan los vencimientos de la cola humana y se actualiza el historial de KPIs que alimenta las alertas.</li>
+</ul>
+
+<p>El siguiente diagrama muestra el <b>contrato de datos</b> entre etapas y la traza real de un SKU de punta a punta. Cada etapa recibe y entrega una estructura fija, nunca texto libre. Por eso cada paso se puede validar, testear y auditar por separado.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/02_flujo_datos.png" width="624"></p>
+<p style="font-size:9.5pt; color:#57606A;"><i>Diagrama 2 — Flujo de datos por SKU, con la traza de QUE-005 tal como la produce el pipeline.</i></p>
+
+<p>El corazón del flujo es el grafo de decisión del Agente 2. Es una máquina de estados explícita, en la que cada nodo es una función pura sobre el estado del SKU. Así está diseñado en el Blueprint (nodos de LangGraph), así que portarlo a LangGraph no cambia la lógica. Los estados finales forman un enum fijo y lo calcula código determinístico. El modelo de lenguaje aporta lectura y extracción, nunca decide el estado.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/03_grafo_decision_hitl.png" width="520"></p>
+<p style="font-size:9.5pt; color:#57606A;"><i>Diagrama 3 — Grafo de decisión del Agente 2 y puntos de intervención humana.</i></p>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">3. Componentes clave</h2>
+
+<h3>3.1 APIs REST y webhooks</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Endpoint</b></td><td><b>Uso</b></td><td><b>Detalle de diseño</b></td></tr>
+<tr><td><code>POST /webhooks/catalogo</code></td><td>evento <code>sku.created</code> / <code>sku.updated</code></td><td>Firma HMAC-SHA256 en <code>X-Signature</code> (401 si no coincide). Esquema validado con Pydantic (422). Idempotente por <code>event_id</code>: un duplicado se ignora. Responde <b>202</b> enseguida y procesa en segundo plano, porque si tardara el emisor reintentaría y duplicaría eventos.</td></tr>
+<tr><td><code>GET /skus/{sku_id}</code></td><td>estado del SKU</td><td>Última corrida + ítems pendientes en la cola humana.</td></tr>
+<tr><td><code>GET /hitl/pendientes</code></td><td>bandeja del analista</td><td>Valor actual, propuesto, confianza, motivo y cada evidencia con su cita.</td></tr>
+<tr><td><code>POST /hitl/{sku_id}/decision</code></td><td>decisión humana</td><td>Solo roles <code>analista_catalogo</code> o <code>lider_catalogo</code> (403). Justificación obligatoria (422). Con fuentes contradictorias exige elegir el valor.</td></tr>
+<tr><td><code>POST /corridas/semanal</code></td><td>disparo del scheduler</td><td>202 + ejecución en segundo plano.</td></tr>
+<tr><td><code>GET /metrics</code> · <code>GET /health</code></td><td>observabilidad</td><td>Formato Prometheus. <i>Health</i> expone el estado de los circuit breakers y el modo seguro.</td></tr>
+</table>
+<p><b>Llamadas salientes:</b> escritura en el catálogo con <code>PATCH /skus/{id}</code> e <code>Idempotency-Key</code> (si se reintenta, el resultado es el mismo); webhook a Slack para el analista o el líder; y la API de Anthropic para visión y jurado, con salida forzada por esquema JSON (tool use).</p>
+<p>La escritura arranca en modo <b>dry-run</b> (<code>DRY_RUN=1</code>): todo lo que se escribiría queda en <code>reports/correcciones_aplicadas.csv</code> y no toca el catálogo. Así se puede auditar una semana completa antes de habilitar la escritura real.</p>
+
+<h3>3.2 Fallbacks y políticas de espera</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Dependencia</b></td><td><b>Política</b></td><td><b>Fallback</b></td></tr>
+<tr><td>Snowflake (catálogo)</td><td>4 intentos con espera exponencial y jitter (0,2 s → 2 s). Circuit breaker: abre tras 3 fallos y se enfría 5 min.</td><td>Último snapshot / CSV. La corrida termina igual y el log lo marca como <code>fallback</code>.</td></tr>
+<tr><td>LlamaCloud (parsing)</td><td>3 intentos (2 s → 20 s). Sin clave = error permanente, sin reintentos.</td><td>pypdf + reconstrucción de la tabla etiqueta/valor.</td></tr>
+<tr><td>Modelo (visión, jurado, extracción)</td><td>4 intentos solo ante 429, timeout o 5xx (1 s → 16 s). Breaker de 3 fallos, 2 min. Timeout de 60 s.</td><td>Visión: respuesta grabada o "la foto no suma evidencia". Jurado: reglas. Extracción: regex → <i>sin_fuente_confiable</i>.</td></tr>
+<tr><td>Embeddings</td><td>Modelo local MiniLM (ONNX).</td><td>Embedding por hashing determinístico.</td></tr>
+<tr><td>Slack</td><td>3 intentos.</td><td>Archivo <code>notificaciones.log</code>: el aviso nunca se pierde.</td></tr>
+<tr><td>API del catálogo</td><td>3 intentos; un 4xx no se reintenta.</td><td>No hay fallback de escritura: si falla, el SKU queda pendiente. <b>Nunca se escribe por otra vía.</b></td></tr>
+</table>
+<p>Solo se reintentan los errores <b>transitorios</b> (timeout, 429, 5xx). Un 4xx o una credencial faltante son <b>permanentes</b>: reintentar no los arregla y solo demoraría el fallback. La espera usa <i>full jitter</i> (<code>random(0, min(máx, base·2ⁿ))</code>) para que varios workers no reintenten todos al mismo tiempo.</p>
+<p><b>Políticas de espera de la cola humana.</b> Siguen la distinción del Módulo 4 entre procesos que pueden expirar y procesos que no:</p>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Ítem en la cola</b></td><td><b>Si nadie responde</b></td><td><b>Por qué</b></td></tr>
+<tr><td>Corrección condicional / dato incompleto / sin fuente</td><td>A las 48 h <b>escala al líder</b>. Nunca se auto-aprueba.</td><td>Un valor sin firma no se escribe. Esperar no rompe nada.</td></tr>
+<tr><td>Bloqueo propuesto de un SKU activo</td><td><b>No vence nunca.</b> Se re-notifica, pero el SKU sigue vendiéndose.</td><td>Bloquear por timeout sería exactamente la venta perdida que se quiere evitar.</td></tr>
+<tr><td>Sin fuente confiable 2 semanas seguidas</td><td>Escala al líder.</td><td>Pide una acción distinta (remedir, pedir la ficha al proveedor).</td></tr>
+</table>
+
+<h3>3.3 Capa 1 y Agente 1: validación determinística y detección</h3>
+<p>Antes de cualquier modelo, cada registro pasa la <b>Capa 1</b>: unidad reconocida (el contenido neto se lleva a kg o l), peso entre 0,001 y 50 kg, cada dimensión entre 0,5 y 200 cm y subcategoría presente. Lo que falla va a <i>dato_incompleto</i> para carga manual y no consume ninguna llamada a un modelo.</p>
+<p>El <b>Agente 1</b> calcula, para cada grupo y cada campo, el rango esperado con el método IQR, igual que un boxplot: [Q1 − 1,5·IQR, Q3 + 1,5·IQR].</p>
+<ul>
+<li>El margen tiene un piso del 5% de Q3, porque en grupos muy homogéneos el IQR casi vale 0.</li>
+<li>Con menos de 4 SKUs el grupo no se juzga.</li>
+<li>El contenido neto se valida contra el nombre del producto con la heurística v3, que prueba las dos lecturas de un pack "N x M g" y se queda con la más cercana.</li>
+</ul>
+<p>La salida es una cola priorizada: alta rotación primero, después mayor desvío.</p>
+
+<h3>3.4 RAG con base vectorial</h3>
+<ul>
+<li><b>Parsing:</b> LlamaParse convierte las fichas PDF de proveedor a Markdown. Antes de indexar, un filtro elimina toda línea con precio, condiciones de pago, descuentos o costos. El agente solo puede leer especificación física (grounding de la Pre-entrega 3), y el dato comercial nunca llega a la base vectorial ni al prompt.</li>
+<li><b>Chunking estructural: un chunk por producto.</b> Las fichas ya vienen organizadas por SKU. Cortar por cantidad de tokens podría partir la tabla de un producto y mezclar el peso de uno con las dimensiones de otro. Cada chunk repite el encabezado del documento (proveedor) para no perder contexto.</li>
+<li><b>Base vectorial:</b> Chroma con distancia coseno, upsert idempotente y una colección por modelo de embeddings, para no mezclar espacios vectoriales.</li>
+<li><b>Recuperación híbrida:</b> filtro por palabra clave exacta (el código del SKU) + ranking por similitud dentro de ese subconjunto, top-k = 4. Si el filtro no devuelve nada, se hace la búsqueda semántica pura y una <b>verificación de identidad</b> descarta los chunks que no mencionan el SKU.</li>
+<li><b>Extracción:</b> regex sobre la tabla Markdown, porque el formato es fijo y no hace falta gastar una llamada. Si el layout no se reconoce, la extracción la hace el modelo con esquema JSON. Si tampoco aparece el dato, el campo queda en <code>null</code> y el SKU termina en <i>sin_fuente_confiable</i>. El sistema nunca inventa un valor.</li>
+</ul>
+
+<h3>3.5 Integración multimodal</h3>
+<p>El rótulo logístico fotografiado (imagen) trae impresos el peso bruto y las dimensiones. El modelo de visión recibe la imagen y un esquema JSON obligatorio (<code>legible</code>, <code>peso_kg</code>, <code>dimensiones_cm</code>, <code>ref_cliente</code>), a temperatura 0 y con la instrucción de devolver <code>null</code> ante cualquier dato dudoso.</p>
+<p>La foto es <b>evidencia no oficial</b>:</p>
+<ul>
+<li>puede sumar confianza junto a otra fuente o desempatar a favor de una,</li>
+<li>pero sola nunca habilita una corrección directa,</li>
+<li>y si no hay foto o es ilegible, simplemente no suma: nunca frena el flujo.</li>
+</ul>
+<p>En el caso QUE-005, la foto (0,33 kg) coincide con la ficha del proveedor y contradice al fabricante (0,55 kg). El sistema muestra las tres al analista, que elige con esa evidencia a la vista.</p>
+
+<h3>3.6 Agente 2: confianza y reglas de decisión</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Regla</b></td><td><b>Definición operativa</b></td></tr>
+<tr><td>Fuentes oficiales</td><td>Ficha del proveedor y catálogo del fabricante. No oficiales: foto del rótulo e histórico de correcciones.</td></tr>
+<tr><td>Confianza alta</td><td>Hay fuente oficial y todas las fuentes difieren ≤ 5% del valor propuesto.</td></tr>
+<tr><td>Confianza media</td><td>Fuente oficial con diferencias del 5 al 15%, o dos fuentes no oficiales que coinciden.</td></tr>
+<tr><td>Fuentes contradictorias</td><td>Dos oficiales difieren &gt; 15% → no se propone un valor único.</td></tr>
+<tr><td>Corrección directa</td><td>Confianza alta + desvío vs rango ≤ 30% + no alta rotación + validación de salida OK + modo seguro apagado.</td></tr>
+<tr><td>Falso positivo confirmado</td><td>Si una fuente oficial confirma el valor cargado (±5%), el caso se cierra como <i>ok</i> sin tocar nada.</td></tr>
+<tr><td>Bloqueo propuesto</td><td>Campo logístico + sin ninguna fuente + desvío &gt; 30% → <i>bloqueado_pendiente_aprobacion</i> (firma humana).</td></tr>
+</table>
+<p><b>Desvío vs rango</b> (qué tan lejos está el valor cargado del rango de su subcategoría) y <b>diferencia entre fuentes</b> (cuánto coinciden las evidencias) son dos medidas independientes. Un SKU puede tener confianza alta y aun así requerir firma porque su error es grande: es el caso de YOG-004.</p>
+
+<h3>3.7 Human-in-the-Loop</h3>
+<p>Una persona interviene en tres puntos:</p>
+<ol>
+<li><b>Pre-acción:</b> todo lo que no es corrección directa. Incluye siempre el bloqueo de un SKU activo, la decisión de mayor riesgo del proceso.</li>
+<li><b>Por incertidumbre:</b> confianza media o baja, fuentes contradictorias, sin fuente.</li>
+<li><b>Post-acción:</b> el líder audita cada semana una muestra aleatoria del 15% de las correcciones directas, y el jurado automático la revisa antes que él.</li>
+</ol>
+<p>Las decisiones posibles son <i>aprobado</i> (se escribe el valor, el elegido si había contradicción), <i>rechazado</i> (no se toca nada) y <i>pedido de más evidencia</i> (sigue en la cola).</p>
+<p>Cada decisión queda en <code>registro_aprobaciones</code> con: SKU, campo, timestamp, quién, rol, fuentes revisadas, desvío, justificación (obligatoria), resultado, acción original del agente y valor aplicado. Ese registro sostiene la decisión ante un reclamo de proveedor y es la materia prima de la auto-mejora.</p>
+<p>El <b>menor privilegio</b> se aplica en el código, no en el prompt. La única puerta de escritura (<code>EscritorCatalogo</code>) expone solo <i>corregir medida</i> y <i>bloquear con aprobación</i>. Modificar precios, tocar la tabla de rangos o borrar el histórico no existen como métodos, así que el agente no tiene forma de ejecutarlos.</p>
+
+<h3>3.8 Observabilidad, evaluaciones automáticas y workflow auto-mejorable</h3>
+<p><b>Observabilidad.</b></p>
+<ul>
+<li><b>Logs:</b> cada evento es una línea JSON con nivel, mensaje, <code>trace_id</code> de la corrida y <code>sku_id</code>, así que la historia de un SKU se reconstruye con un filtro. Usan los niveles del Módulo 1 (INFO, WARNING, ERROR) y en consola solo se muestra lo que requiere atención.</li>
+<li><b>Métricas:</b> contadores por estado, reintentos, fallbacks, circuitos abiertos y costo; latencias mediana y p95 por etapa. Se publican en <code>/metrics</code> y se guardan en <code>reports/metricas.json</code>.</li>
+</ul>
+<p><b>Evaluaciones automáticas.</b> El golden set (<code>data/eval/golden_set.json</code>) define el estado correcto de cada SKU de prueba, incluidos los falsos positivos históricos. La evaluación offline corre el pipeline completo y mide:</p>
+<ul>
+<li>exactitud de estado,</li>
+<li>precisión y recall del detector,</li>
+<li>exactitud del valor propuesto (±2%),</li>
+<li>fidelidad a la fuente: un <b>jurado</b> (LLM-as-judge con clave, reglas sin clave) verifica que cada valor propuesto esté efectivamente en la evidencia citada.</li>
+</ul>
+<p>La <b>compuerta de despliegue</b> falla (exit 1) si la exactitud baja de 95% o la fidelidad de 100%, y GitHub Actions la corre en cada push.</p>
+<p><b>Workflow auto-mejorable.</b></p>
+<ol>
+<li>Los rechazos del analista quedan registrados con su justificación.</li>
+<li><code>auto_mejora.py</code> los diagnostica y arma umbrales candidatos.</li>
+<li>Los candidatos se evalúan en sombra contra el golden set.</li>
+<li>Se recomiendan solo si mejoran la exactitud o la precisión sin perder recall ni fidelidad.</li>
+<li>Aplicarlos requiere al líder, porque modificar los umbrales es una acción prohibida para el agente.</li>
+</ol>
+<p>El sistema se mejora proponiendo, nunca auto-modificándose en producción. En la demo, el analista rechazó tres veces el bloqueo de BAR-006 ("es un pack 3x25 g, el dato está bien"). El diagnóstico propuso <code>separar_packs = true</code> y la evaluación en sombra confirmó la mejora:</p>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:70%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Métrica (golden set, 59 SKUs)</b></td><td><b>v1</b></td><td><b>v2 propuesta</b></td></tr>
+<tr><td>Exactitud de estado</td><td>98,3%</td><td><b>100%</b></td></tr>
+<tr><td>Precisión del detector</td><td>91,7%</td><td><b>100%</b></td></tr>
+<tr><td>Recall del detector</td><td>100%</td><td>100%</td></tr>
+<tr><td>Exactitud del valor propuesto</td><td>100%</td><td>100%</td></tr>
+<tr><td>Fidelidad a la fuente (jurado)</td><td>100%</td><td>100%</td></tr>
+</table>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/04_ciclo_auto_mejora.png" width="560"></p>
+<p style="font-size:9.5pt; color:#57606A;"><i>Diagrama 4 — Ciclo de monitoreo y auto-mejora con compuerta humana.</i></p>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">4. Capturas y artefactos reproducibles</h2>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Artefacto</b></td><td><b>Qué muestra</b></td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/tree/main/turbo-catalogo-automation">Repositorio (README con instrucciones)</a></td><td>Código completo, cómo correrlo en 3 minutos, tabla consigna → archivo.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/notebooks/01_experimentacion.ipynb">Notebook de experimentación (ejecutado)</a></td><td>Capa 1, rangos, parsing, búsqueda vectorial, lectura del rótulo, Agente 2, evaluación v1 vs v2 y jurado, paso por paso con salidas.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/api.py">src/api.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/pipeline.py">src/pipeline.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/agente2.py">src/agente2.py</a></td><td>Endpoints, orquestador y grafo de decisión.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/rag.py">src/rag.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/parsing.py">src/parsing.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/vision.py">src/vision.py</a></td><td>RAG, LlamaCloud y multimodal.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/evals.py">src/evals.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/src/auto_mejora.py">src/auto_mejora.py</a></td><td>Evaluaciones, jurado, compuerta y recalibración.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/tests/test_smoke.py">tests/test_smoke.py</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/.github/workflows/turbo-ci.yml">CI</a></td><td>14 smoke tests + compuerta de evaluación en cada push.</td></tr>
+<tr><td><a href="https://github.com/OsoSuarez/OsoIA/tree/main/turbo-catalogo-automation/reports">reports/</a> · <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/docs/ejemplo_logs.jsonl">docs/ejemplo_logs.jsonl</a></td><td>Salidas reales de la demo: resultado por SKU, KPIs, evaluación, propuesta v2, correcciones, notificaciones y logs.</td></tr>
+</table>
+<p><b>Cómo reproducir:</b> <code>pip install -r requirements.txt</code> → <code>pytest -q</code> → <code>python run_demo.py --reset</code> → <code>python -m src.evals</code> → <code>uvicorn src.api:app</code>.</p>
+
+<p><b>Captura 1 — Corrida semanal:</b> estado de cada SKU marcado, fuentes usadas y KPIs de la corrida.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/captura_demo.png" width="600"></p>
+<p><b>Captura 2 — Políticas de espera, auto-mejora y semana degradada:</b> escalamiento a las 49 h (el bloqueo no vence), propuesta v2 evaluada en sombra, y Snowflake caído con 3 reintentos y fallback.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/captura_auto_mejora.png" width="420"></p>
+<p><b>Captura 3 — API local:</b> webhook aceptado (202), firma inválida rechazada (401), health con los circuitos y métricas Prometheus.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/captura_api.png" width="460"></p>
+<p><b>Captura 4 — Input multimodal:</b> rótulo de QUE-005, que el modelo de visión lee como 0,33 kg. La salida de los 14 smoke tests está en <a href="https://github.com/OsoSuarez/OsoIA/blob/main/turbo-catalogo-automation/docs/img/captura_tests.png">docs/img/captura_tests.png</a>.</p>
+<p><img src="https://raw.githubusercontent.com/OsoSuarez/OsoIA/main/turbo-catalogo-automation/docs/img/05_rotulo_QUE-005.png" width="260"></p>
+
+<p><b>NotebookLM para experimentación.</b> Las fichas ya parseadas (<code>data/parsed/*.md</code>), sin campos comerciales, se cargan como fuentes en NotebookLM. Ahí el analista prueba consultas en lenguaje natural ("¿qué peso bruto declara el proveedor para QUE-005?") y compara las respuestas citadas con lo que recupera el RAG. Es una forma rápida de detectar fichas con formato raro antes de agregarlas a la base vectorial. No reemplaza la evaluación automática: la complementa con revisión humana exploratoria.</p>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">5. Justificación de decisiones de diseño</h2>
+
+<h3>5.1 Decisiones técnicas</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Decisión</b></td><td><b>Alternativa descartada</b></td><td><b>Por qué</b></td></tr>
+<tr><td>Detección determinística (IQR + regex) antes de cualquier LLM</td><td>Pedirle al modelo que juzgue cada SKU</td><td>Es más barato, más rápido y auditable, y el resultado es reproducible. El ~80% del volumen (47 de 59 SKUs, los que están dentro de rango) no llega nunca al modelo.</td></tr>
+<tr><td>Estados como enum calculado por código</td><td>Estado en texto libre generado por el modelo</td><td>Un estado mal redactado no puede habilitar una escritura. Se testea y se mide.</td></tr>
+<tr><td>RAG con búsqueda híbrida y verificación de identidad</td><td>Búsqueda semántica pura</td><td>Los productos de una misma familia son casi iguales en texto. Citar la ficha del producto vecino es el error más peligroso.</td></tr>
+<tr><td>Chunk por producto</td><td>Chunks de N tokens con solapamiento</td><td>Respeta la integridad semántica de la tabla de cada SKU (Módulo 2).</td></tr>
+<tr><td>Temperatura 0 + esquema JSON obligatorio</td><td>Texto libre parseado después</td><td>Salida determinística y validable (Módulo 1, output schemas).</td></tr>
+<tr><td>Modelo de rango medio para visión y jurado (configurable con <code>LLM_MODEL</code>)</td><td>Modelo premium para todo</td><td>"Si el volumen cuesta dinero → modelo barato": cada llamada es una extracción acotada. El error caro lo cubren las reglas y la firma humana, no el tamaño del modelo.</td></tr>
+<tr><td>Corrección directa solo en un subconjunto estrecho</td><td>Auto-corregir todo lo que tenga fuente</td><td>Proporcional al riesgo: el SKU de alta rotación o el error grande valen una firma de segundos.</td></tr>
+<tr><td>Auto-mejora con compuerta humana</td><td>Que el sistema ajuste sus umbrales solo</td><td>Un ajuste automático sin control puede degradar el recall sin que nadie lo note.</td></tr>
+<tr><td>Python + FastAPI (workflows as code)</td><td>n8n / Make</td><td>La lógica de decisión vive en código versionado, testeado y con CI. n8n sigue siendo una buena opción para la capa de notificaciones si el equipo prefiere editarla visualmente.</td></tr>
+</table>
+
+<h3>5.2 Seguridad</h3>
+<ul>
+<li><b>Webhook:</b> firma HMAC comparada en tiempo constante, validación de esquema e idempotencia. Un emisor no autenticado no puede disparar procesamiento.</li>
+<li><b>Secretos:</b> solo en variables de entorno (<code>.env</code> fuera del repo, <code>.env.example</code> documentado). En producción van a un gestor de secretos con rotación.</li>
+<li><b>Menor privilegio:</b>
+<ul>
+<li>Snowflake: rol de solo lectura.</li>
+<li>Catálogo: un token que solo permite PATCH de campos físicos y del flag de activo.</li>
+<li>Slack: webhook de un solo canal.</li>
+<li>Las acciones prohibidas no existen en el código.</li>
+</ul></li>
+<li><b>Prompt injection:</b> el contenido de las fichas y las fotos se trata como dato, nunca como instrucción. El modelo no tiene herramientas que actúen. Solo devuelve JSON con esquema, y el estado lo calcula código que no lee texto del modelo.</li>
+<li><b>Roles en la cola humana:</b> solo analista o líder deciden. Bloquear un SKU de alta rotación requiere al líder.</li>
+</ul>
+
+<h3>5.3 Privacidad y datos</h3>
+<ul>
+<li><b>No hay datos personales en el flujo.</b> Se procesan especificaciones de producto. El dato sensible es comercial (precios y condiciones del proveedor) y se elimina en el parsing, antes de indexar o enviar nada a un servicio externo.</li>
+<li><b>Transferencia a servidores externos (Módulo 1):</b>
+<ul>
+<li>a la API del modelo solo viajan el chunk físico del SKU o la imagen del rótulo;</li>
+<li>a LlamaCloud, las fichas originales.</li>
+</ul>
+Antes de producción hay que validar con Legal y Seguridad la retención contractual de esos proveedores y su región de procesamiento. Si alguna ficha no puede salir, se usa la ruta local (pypdf) para ese proveedor.</li>
+<li><b>Repositorio público:</b> datos 100% sintéticos, sin nombres de tablas, cuentas ni marcas reales.</li>
+</ul>
+
+<h3>5.4 Métricas de éxito (fijadas de antemano, Pre-entrega 4)</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>KPI</b></td><td><b>Umbral</b></td><td><b>Medido en la demo</b></td></tr>
+<tr><td>Tasa de finalización (resuelto sin intervención / volumen <b>completo</b> escaneado)</td><td>≥ 70%</td><td>81,4% (48 de 59)</td></tr>
+<tr><td>Recall del detector (errores reales detectados)</td><td>100% (no negociable)</td><td>100%</td></tr>
+<tr><td>Fidelidad a la fuente (jurado)</td><td>100%</td><td>100%</td></tr>
+<tr><td>Latencia Agente 1, catálogo completo</td><td>mediana ≤ 5 min · p95 ≤ 8 min</td><td>0,05 s / 59 SKUs (real previo: 1,5 s / 541)</td></tr>
+<tr><td>Latencia Agente 2 por SKU investigado</td><td>mediana ≤ 90 s · p95 ≤ 3 min</td><td>&lt; 0,02 s offline. El valor real con modelo se calibra en el piloto.</td></tr>
+<tr><td>Costo por SKU investigado</td><td>≤ USD 0,50</td><td>USD 0 offline. Estimación de la P4: ~USD 0,04 de modelo + ~USD 0,17 de tiempo humano.</td></tr>
+<tr><td>Override rate en la auditoría</td><td>alerta si &gt; 20%</td><td>30% en la demo → disparó la recalibración v2</td></tr>
+</table>
+<p>El impacto de negocio sigue el ROI de la Pre-entrega 4: <b>~10,7 h/semana de capacidad neta recuperada</b>, con supuestos explícitos (200 SKUs por semana y 4 min por SKU en el proceso manual). La tasa de finalización medida (81%) está por encima del piso del 70% que usa esa cuenta, así que la estimación sigue siendo conservadora. Los números de este documento salen de datos sintéticos: validan que el mecanismo funciona, no el rendimiento sobre el catálogo real, que se mide en el piloto (sección 6).</p>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">6. Plan de despliegue, métricas y políticas de producción</h2>
+
+<h3>6.1 Despliegue por etapas</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Etapa</b></td><td><b>Qué se activa</b></td><td><b>Criterio para avanzar</b></td></tr>
+<tr><td><b>0 · Sombra</b> (semanas 1–2)</td><td>Corrida semanal contra Snowflake real, <code>DRY_RUN=1</code>. El analista compara la propuesta con su revisión manual.</td><td>Recall 100% sobre lo que el analista encontró. Cero escrituras.</td></tr>
+<tr><td><b>1 · Piloto "solo sugiere"</b> (semanas 3–6)</td><td>1–2 subcategorías. Cola humana con Slack. Todo pasa por aprobación (sin corrección directa).</td><td>≥ 50% de finalización, override &lt; 20%, cero incidentes de rango físico. Se calibran latencia y costo reales.</td></tr>
+<tr><td><b>2 · Corrección directa acotada</b> (mes 2–3)</td><td><code>DRY_RUN=0</code> y corrección directa para el resto del catálogo de Turbo AR. Webhook en vivo.</td><td>4 semanas seguidas cumpliendo los KPIs de 5.4 sin disparar alertas.</td></tr>
+<tr><td><b>3 · Escala</b> (mes 3+)</td><td>Otros países y verticales, recalibración con datos de producción.</td><td>—</td></tr>
+</table>
+<p><b>Infraestructura propuesta:</b> contenedor de la API (FastAPI + uvicorn) detrás del gateway interno; scheduler (cron del orquestador de datos existente o Airflow) que llama a <code>/corridas/semanal</code>; Chroma en modo servidor (o pgvector); cola humana y registro en Postgres en lugar de SQLite (misma interfaz); métricas a Prometheus/Datadog y errores a Sentry. Cada cambio de umbrales o de código pasa por CI (tests + compuerta de evaluación) antes de desplegar.</p>
+
+<h3>6.2 Monitoreo y alertas</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Señal</b></td><td><b>Condición</b></td><td><b>Respuesta automática</b></td></tr>
+<tr><td>Caída de la tasa de finalización</td><td>&gt; 15 pp vs promedio de las 4 corridas previas</td><td><b>Modo seguro:</b> el Agente 2 pasa a "solo sugiere" (ninguna escritura directa) + auditoría del 100% de la semana + alerta crítica.</td></tr>
+<tr><td>Override rate en la auditoría</td><td>&gt; 20% en una semana</td><td>Se corre <code>auto_mejora.py</code> → propuesta de recalibración al líder.</td></tr>
+<tr><td>Costo por SKU</td><td>&gt; USD 0,50</td><td>Alerta. Se revisan las llamadas al modelo por SKU en los logs.</td></tr>
+<tr><td>Latencia p95</td><td>Sobre el umbral 2 semanas seguidas</td><td>Señal temprana de recalibración.</td></tr>
+<tr><td>Circuit breaker abierto / fallbacks</td><td>Snowflake, modelo o LlamaCloud</td><td>Visible en <code>/health</code> y en los contadores <code>fallback_*</code>. Si Snowflake falla 2 corridas seguidas, alerta al equipo de datos.</td></tr>
+<tr><td>Cola humana envejecida</td><td>Ítems escalados sin resolver &gt; 5 días</td><td>Reporte al líder. Los bloqueos siguen sin vencer.</td></tr>
+<tr><td>Webhook</td><td>Firmas inválidas o errores de procesamiento</td><td>Contadores en <code>/metrics</code> → alerta de seguridad u operación.</td></tr>
+</table>
+<p><b>Mecanismo de salida:</b> si en la etapa 2 algún KPI se incumple 2 semanas seguidas, el sistema vuelve a la etapa 1 (modo "solo sugiere") hasta auditar el 100% de los logs. El Agente 1 no se ve afectado porque solo detecta.</p>
+
+<h3>6.3 Objetivos de servicio y retención de datos</h3>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Objetivo / dato</b></td><td><b>Política</b></td></tr>
+<tr><td>Disponibilidad del webhook (SLO)</td><td>99,5% mensual. Respuesta 202 en p95 &lt; 300 ms.</td></tr>
+<tr><td>Procesamiento de un evento</td><td>p95 &lt; 5 min desde el webhook hasta la propuesta en la cola o la corrección.</td></tr>
+<tr><td>Corrida semanal</td><td>Termina antes del lunes 08:00, con fallback si Snowflake no responde.</td></tr>
+<tr><td>Respuesta humana (SLA interno)</td><td>48 h para correcciones; después escala al líder. Los bloqueos no tienen vencimiento automático.</td></tr>
+<tr><td>Logs de operación</td><td>90 días.</td></tr>
+<tr><td>Registro de aprobaciones y correcciones</td><td>24 meses (sostiene reclamos de proveedores y auditorías).</td></tr>
+<tr><td>Fotos de rótulos</td><td>180 días; se conserva la lectura estructurada.</td></tr>
+<tr><td>Base vectorial</td><td>Se reindexa cada semana. Una ficha reemplazada se sobrescribe (upsert) y la versión vieja no queda citable.</td></tr>
+<tr><td>Umbrales</td><td>Versionados (v1, v2…). Toda corrección registra contra qué versión se evaluó.</td></tr>
+</table>
+
+<h3>6.4 Runbook mínimo</h3>
+<ol>
+<li><b>Snowflake no responde:</b> la corrida usa el último snapshot y lo marca en el log (<code>fuente_catalogo = csv_muestra(fallback)</code>). Se verifica <code>/health</code> y se re-dispara <code>POST /corridas/semanal</code> cuando el circuito vuelve a "cerrado".</li>
+<li><b>Modo seguro activado:</b> se revisa la alerta en <code>reports/metricas.json</code>, se audita la semana completa y se corre <code>python -m src.evals</code>. Se vuelve al modo normal borrando <code>.state/modo.json</code>, con aprobación del líder.</li>
+<li><b>Reclamo de un proveedor:</b> se busca el SKU en <code>registro_aprobaciones</code> (quién, cuándo, con qué fuente) y en los logs por <code>sku_id</code>.</li>
+</ol>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">7. Conclusiones y aprendizajes</h2>
+<ul>
+<li><b>Lo determinístico primero, el modelo donde suma.</b> Rangos, unidades y reglas resuelven la mayoría de los casos sin costo ni variabilidad. El modelo aporta en lo que el código no hace bien: leer una foto, extraer de un layout desconocido, juzgar si una cita respalda un valor.</li>
+<li><b>El falso positivo es un problema de diseño, no de exactitud.</b> El caso del pack 3x25 g muestra que un detector correcto en promedio puede equivocarse en un subgrupo. Lo que evita el daño no es un modelo mejor: es que el bloqueo requiera firma y que el rechazo de esa firma vuelva como señal de mejora.</li>
+<li><b>Las evaluaciones convierten la mejora en algo verificable.</b> Sin golden set, cambiar un umbral es opinión; con golden set, es una comparación que una compuerta puede aprobar o frenar. Durante el desarrollo, la evaluación detectó una candidata que arreglaba un falso positivo y creaba otro, y la compuerta la habría frenado.</li>
+<li><b>Los fallbacks tienen que estar definidos por dependencia.</b> No es lo mismo degradar el parsing que degradar la escritura. Para la escritura no hay fallback: si no se puede escribir bien, no se escribe.</li>
+<li><b>Limitaciones honestas:</b> el rendimiento medido es sobre datos sintéticos; la latencia y el costo con modelo real, y la calidad de LlamaParse sobre fichas reales, se calibran en el piloto; los tiempos humanos de la cuenta de ROI siguen siendo supuestos a validar.</li>
+<li><b>Próximo paso:</b> correr la etapa 0 (sombra) contra Snowflake con el catálogo real de Turbo AR y reemplazar el golden set sintético por uno armado con las decisiones reales del analista.</li>
+</ul>
+
+<!-- ============================================================ -->
+<h2 style="color:#E8590C;">Anexo A — Autoevaluación contra la consigna</h2>
+<table border="1" cellpadding="5" style="border-collapse:collapse; width:100%; font-size:9pt;">
+<tr style="background:#1F2328; color:#ffffff;"><td><b>Requisito</b></td><td><b>Dónde se cumple</b></td><td><b>Estado</b></td></tr>
+<tr><td>APIs REST y webhooks</td><td>3.1 · <code>src/api.py</code>, <code>src/hitl.py</code></td><td>✔</td></tr>
+<tr><td>Fallbacks y políticas de espera</td><td>3.2 · <code>src/resiliencia.py</code></td><td>✔</td></tr>
+<tr><td>Logs, métricas y observabilidad</td><td>3.8, 6.2 · <code>src/observabilidad.py</code></td><td>✔</td></tr>
+<tr><td>RAG con base vectorial</td><td>3.4 · <code>src/rag.py</code> (Chroma)</td><td>✔</td></tr>
+<tr><td>Integración multimodal</td><td>3.5 · <code>src/vision.py</code></td><td>✔</td></tr>
+<tr><td>Puntos de intervención humana</td><td>3.7 · <code>src/hitl.py</code></td><td>✔</td></tr>
+<tr><td>Evaluaciones automáticas y workflow auto-mejorable</td><td>3.8 · <code>src/evals.py</code>, <code>src/auto_mejora.py</code></td><td>✔</td></tr>
+<tr><td>LlamaCloud y NotebookLM</td><td>3.4, 4 · <code>src/parsing.py</code>, <code>data/parsed/</code></td><td>✔</td></tr>
+<tr><td>≥ 3 diagramas</td><td>4 diagramas (secciones 2 y 3.8)</td><td>✔</td></tr>
+<tr><td>≥ 2 capturas o enlaces reproducibles</td><td>5 capturas + repo, notebook, scripts, tests y CI</td><td>✔</td></tr>
+<tr><td>Seguridad, privacidad y métricas de éxito</td><td>5.2 – 5.4</td><td>✔</td></tr>
+<tr><td>Plan de despliegue y monitoreo · SLO y retención</td><td>6.1 – 6.4</td><td>✔</td></tr>
+<tr><td>Documento accesible por URL</td><td>Este Google Doc (acceso por link)</td><td>✔</td></tr>
+</table>
+
+</body>
+</html>
