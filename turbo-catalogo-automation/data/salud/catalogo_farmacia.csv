@@ -1,0 +1,17 @@
+SKU_ID,PRODUCT_NAME,SUBCATEGORY_NAME,CONCENTRACION_MG,UNIDADES_ENVASE,CONDICION_VENTA,CADENA_FRIO,PESO_KG,LARGO_CM,ANCHO_CM,ALTO_CM,ROTACION
+FAR-001,Ibuprofeno Alivian 400 mg x 20 comprimidos,Analgésicos,4000,20,venta_libre,False,0.04,9.5,2.5,5.0,alta
+FAR-002,Paracetamol Termin 500 mg x 16 comprimidos,Analgésicos,500,16,venta_libre,False,0.03,9.0,2.0,5.0,alta
+FAR-003,Amoxicilina Bactox 500 mg x 16 cápsulas,Antibióticos,500,16,venta_libre,False,0.04,10.0,3.0,6.0,media
+FAR-004,Insulina NPH Glucem 100 UI/ml frasco 10 ml,Insulinas,,1,bajo_receta,False,0.05,4.0,4.0,7.0,media
+FAR-005,Loratadina Alerfin 10 mg x 10 comprimidos,Antialérgicos,10,100,venta_libre,False,0.02,8.0,1.5,4.0,media
+FAR-006,Omeprazol Gastrum 20 mg x 14 cápsulas,Digestivos,20,14,venta_libre,False,0.05,9.0,2.5,5.0,media
+FAR-007,Ibuprofeno Alivian 600 mg x 10 comprimidos,Analgésicos,600,10,venta_libre,False,0.03,9.5,2.0,5.0,media
+FAR-008,Salbutamol Respir aerosol 100 mcg/dosis x 200 dosis,Respiratorios,0.1,200,bajo_receta,False,0.04,4.5,4.5,11.0,media
+FAR-009,Diclofenac Inflamex 75 mg x 10 comprimidos,Antiinflamatorios,75,10,venta_libre,False,0.03,9.0,2.0,5.0,media
+FAR-010,"Clonazepam Calmex 0,5 mg x 30 comprimidos",Ansiolíticos,0.5,30,bajo_receta,False,0.02,8.5,2.0,4.5,baja
+FAR-011,Paracetamol Termin 1 g x 8 comprimidos,Analgésicos,1000,8,venta_libre,False,0.03,9.0,2.0,5.0,alta
+FAR-012,Cetirizina Alerfin 10 mg x 10 comprimidos,Antialérgicos,10,10,venta_libre,False,0.02,8.0,1.5,4.0,media
+FAR-013,Omeprazol Gastrum 20 mg x 28 cápsulas,Digestivos,20,28,venta_libre,False,0.04,9.0,3.0,5.0,media
+FAR-014,Enalapril Presin 10 mg x 30 comprimidos,Cardiovasculares,,30,bajo_receta,False,0.03,9.0,2.0,5.0,media
+FAR-015,"Vacuna antigripal Inmunex jeringa 0,5 ml",Vacunas,0,1,bajo_receta,True,0.03,12.0,2.0,3.0,baja
+FAR-016,Omeprazol Gastrum 20 mg x 30 cápsulas,Digestivos,20,30,venta_libre,False,0.09,9.0,3.0,5.0,baja

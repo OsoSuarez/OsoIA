@@ -1,0 +1,10 @@
+SKU_ID,DECISION,CAMPO,VALOR
+FAR-001,corregir,concentracion_mg,400
+FAR-003,corregir,condicion_venta,bajo_receta
+FAR-004,corregir,cadena_frio,True
+FAR-005,corregir,unidades_envase,10
+FAR-006,corregir,peso_kg,0.04
+FAR-009,revisar,concentracion_mg,75
+FAR-010,corregir,condicion_venta,receta_archivada
+FAR-014,completar,concentracion_mg,
+FAR-016,revisar,peso_kg,

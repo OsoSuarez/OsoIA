@@ -1,0 +1,76 @@
+{
+  "FAR-001": {
+    "estado": "escalado_clinico",
+    "riesgo": "alto",
+    "campo": "concentracion_mg",
+    "valor": 400,
+    "motivo": "concentración x10 (4000 mg): riesgo de error de dosis"
+  },
+  "FAR-003": {
+    "estado": "escalado_clinico",
+    "riesgo": "alto",
+    "campo": "condicion_venta",
+    "valor": "bajo_receta",
+    "motivo": "antibiótico publicado como venta libre"
+  },
+  "FAR-004": {
+    "estado": "escalado_clinico",
+    "riesgo": "alto",
+    "campo": "cadena_frio",
+    "valor": true,
+    "motivo": "insulina sin cadena de frío + reclamo de paciente"
+  },
+  "FAR-005": {
+    "estado": "escalado_clinico",
+    "riesgo": "medio",
+    "campo": "unidades_envase",
+    "valor": 10,
+    "motivo": "x10 publicado como x100: error de cantidad dispensada"
+  },
+  "FAR-006": {
+    "estado": "pendiente_aprobacion",
+    "riesgo": "bajo",
+    "campo": "peso_kg",
+    "valor": 0.04,
+    "motivo": "dato logístico con una sola fuente oficial: en salud no alcanza para corregir solo"
+  },
+  "FAR-009": {
+    "estado": "escalado_clinico",
+    "riesgo": "medio",
+    "campo": "concentracion_mg",
+    "motivo": "reclamo de paciente sobre un campo clínico (el prospecto coincide con el catálogo)"
+  },
+  "FAR-010": {
+    "estado": "escalado_clinico",
+    "riesgo": "alto",
+    "campo": "condicion_venta",
+    "valor": "receta_archivada",
+    "motivo": "psicotrópico sin receta archivada"
+  },
+  "FAR-014": {
+    "estado": "dato_incompleto",
+    "riesgo": "medio",
+    "motivo": "falta la concentración"
+  },
+  "FAR-016": {
+    "estado": "pendiente_aprobacion",
+    "riesgo": "bajo",
+    "campo": "peso_kg",
+    "motivo": "peso fuera de rango, sin prospecto"
+  },
+  "FAR-007": {
+    "estado": "ok",
+    "riesgo_fp": "alto",
+    "motivo": "600 mg es correcto aunque difiere del grupo (400 mg)"
+  },
+  "FAR-008": {
+    "estado": "ok",
+    "riesgo_fp": "alto",
+    "motivo": "100 mcg = 0,1 mg: broncodilatador de rescate"
+  },
+  "FAR-015": {
+    "estado": "ok",
+    "riesgo_fp": "alto",
+    "motivo": "vacuna sin concentración en mg: no aplica"
+  }
+}

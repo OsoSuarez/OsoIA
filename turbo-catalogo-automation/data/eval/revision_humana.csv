@@ -1,0 +1,12 @@
+SKU_ID,DECISION,CAMPO,VALOR
+GSE-001,completar,peso_kg,1.55
+GSE-009,remedir,peso_kg,1.6
+YOG-004,corregir,peso_kg,1.05
+YOG-006,corregir,alto_cm,23.5
+GAL-007,corregir,peso_kg,0.32
+SNK-003,corregir,peso_kg,0.17
+SNK-005,corregir,peso_kg,0.17
+SNK-008,completar,alto_cm,
+QUE-005,corregir,peso_kg,0.33
+BAR-001,corregir,net_quantity,16
+BAR-002,revisar,net_quantity,

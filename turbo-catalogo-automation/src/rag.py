@@ -140,6 +140,18 @@ class BaseConocimiento:
         log("INFO", "base vectorial indexada", chunks=len(chunks), modelo_embedding=self.modelo_embedding)
         return len(chunks)
 
+    def indexar_textos(self, docs: list[tuple[str, str, str]]) -> int:
+        """Indexa documentos ya limpios: (texto, fuente, archivo). Lo usa la
+        variante healthcare (prospectos y reclamos ya redactados)."""
+        chunks: list[Chunk] = []
+        for texto, fuente, archivo in docs:
+            chunks += chunkear(texto, fuente, archivo)
+        if chunks:
+            self.col.upsert(ids=[c.id for c in chunks], documents=[c.texto for c in chunks],
+                            metadatas=[{"fuente": c.fuente, "archivo": c.archivo} for c in chunks])
+        METRICAS.inc("chunks_indexados", len(chunks))
+        return len(chunks)
+
     def buscar(self, consulta: str, sku_id: str, u: Umbrales) -> list[dict]:
         """Búsqueda híbrida: filtro por palabra clave exacta (el código del
         SKU) + ranking por similitud vectorial dentro de ese subconjunto. Si

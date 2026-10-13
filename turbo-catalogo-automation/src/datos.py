@@ -57,7 +57,8 @@ def _leer_snowflake_resiliente() -> pd.DataFrame:
 
 
 def _leer_csv(path: Path | None = None) -> pd.DataFrame:
-    return pd.read_csv(path or DATA_DIR / "catalogo_muestra.csv")
+    """CATALOGO_CSV permite correr la etapa de sombra sobre un export real."""
+    return pd.read_csv(path or os.getenv("CATALOGO_CSV") or DATA_DIR / "catalogo_muestra.csv")
 
 
 def cargar_catalogo(usar_snowflake: bool | None = None) -> tuple[pd.DataFrame, str]:

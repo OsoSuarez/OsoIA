@@ -26,6 +26,11 @@ from .observabilidad import METRICAS, log
 from .resiliencia import ErrorPermanente, ErrorTransitorio, con_fallback, reintentar
 
 DECISIONES = ("aprobado", "rechazado", "pedido_mas_evidencia")
+ROLES_POR_DOMINIO = {
+    "comercial": ("analista_catalogo", "lider_catalogo"),
+    # Variante healthcare: los campos clínicos los decide personal habilitado.
+    "salud": ("farmaceutico", "director_tecnico"),
+}
 
 
 def ahora() -> datetime:
@@ -49,14 +54,18 @@ class ColaHITL:
             id INTEGER PRIMARY KEY AUTOINCREMENT, sku_id TEXT, campo TEXT, ts TEXT,
             aprobador TEXT, rol TEXT, fuente_revisada TEXT, desvio_revisado REAL,
             justificacion TEXT, resultado TEXT, accion_original TEXT, valor_aplicado REAL);
+        CREATE TABLE IF NOT EXISTS firmas_parciales (
+            sku_id TEXT, campo TEXT, aprobador TEXT, rol TEXT, ts TEXT, valor TEXT,
+            PRIMARY KEY (sku_id, campo));
         """)
 
     def encolar(self, res: dict, u: Umbrales) -> None:
         """Idempotente por (sku, campo): si el SKU ya estaba en la cola se
         actualiza la propuesta pero se conserva la fecha original (la espera no
         se reinicia cada semana)."""
+        horas = res.get("sla_horas") or u.hitl_timeout_horas_correccion
         vence = None if res["estado"] == "bloqueado_pendiente_aprobacion" and not u.hitl_bloqueo_expira \
-            else (ahora() + timedelta(hours=u.hitl_timeout_horas_correccion)).isoformat()
+            else (ahora() + timedelta(hours=horas)).isoformat()
         prev = self.db.execute("SELECT * FROM cola WHERE sku_id=? AND campo=? AND resuelto=0",
                                (res["sku_id"], res["campo"])).fetchone()
         semanas = (prev["semanas_sin_fuente"] + 1) if prev and res["estado"] == "sin_fuente_confiable" else \
@@ -76,7 +85,8 @@ class ColaHITL:
             self.db.execute("UPDATE cola SET escalado=1 WHERE sku_id=? AND campo=?", (res["sku_id"], res["campo"]))
             self.db.commit()
         else:
-            notificar(f"{res['sku_id']} ({res['campo']}): {res['estado']} — {res['motivo']}", "analista_catalogo")
+            notificar(f"{res['sku_id']} ({res['campo']}): {res['estado']} — {res['motivo']}",
+                      res.get("revisor", "analista_catalogo"))
 
     def pendientes(self) -> list[dict]:
         rows = self.db.execute("SELECT * FROM cola WHERE resuelto=0 ORDER BY escalado DESC, creado").fetchall()
@@ -85,13 +95,14 @@ class ColaHITL:
     def revisar_vencimientos(self, momento: datetime | None = None) -> list[str]:
         momento = momento or ahora()
         escalados = []
+        destino = {}
         for r in self.db.execute("SELECT * FROM cola WHERE resuelto=0 AND escalado=0 AND vence IS NOT NULL"):
             if datetime.fromisoformat(r["vence"]) <= momento:
                 escalados.append(r["sku_id"])
+                destino[r["sku_id"]] = json.loads(r["propuesta"]).get("escala_a", "lider_catalogo")
         for sku in escalados:
             self.db.execute("UPDATE cola SET escalado=1 WHERE sku_id=? AND resuelto=0", (sku,))
-            notificar(f"[ESCALADO] {sku}: sin respuesta del analista en el plazo; no se aplica nada sin firma",
-                      "lider_catalogo")
+            notificar(f"[ESCALADO] {sku}: sin respuesta en el plazo; no se aplica nada sin firma", destino[sku])
             METRICAS.inc("hitl_escalados_por_timeout")
             log("WARNING", "aprobación vencida, escalada al líder", sku_id=sku)
         self.db.commit()
@@ -103,13 +114,35 @@ class ColaHITL:
             raise ValueError(f"decisión inválida: {decision}")
         if not justificacion or len(justificacion.strip()) < 5:
             raise ValueError("la justificación es obligatoria")
-        if rol not in ("analista_catalogo", "lider_catalogo"):
-            raise PermissionError("solo analista o líder de Catálogo pueden decidir")
         row = self.db.execute("SELECT * FROM cola WHERE sku_id=? AND campo=? AND resuelto=0",
                               (sku_id, campo)).fetchone()
         if row is None:
             raise KeyError(f"{sku_id}/{campo} no está pendiente")
         prop = json.loads(row["propuesta"])
+        dominio = prop.get("dominio", "comercial")
+        if rol not in ROLES_POR_DOMINIO[dominio]:
+            raise PermissionError(f"rol '{rol}' no habilitado para decidir en el dominio {dominio}")
+        # Doble firma (cuatro ojos) para hallazgos clínicos de riesgo alto: la
+        # primera aprobación queda registrada y el valor se aplica recién con la
+        # segunda, de otra persona, y una de las dos tiene que ser del director técnico.
+        if decision == "aprobado" and prop.get("requiere_doble_firma"):
+            primera = self.db.execute("SELECT * FROM firmas_parciales WHERE sku_id=? AND campo=?",
+                                      (sku_id, campo)).fetchone()
+            if primera is None:
+                self.db.execute("INSERT INTO firmas_parciales VALUES (?,?,?,?,?,?)",
+                                (sku_id, campo, aprobador, rol, ahora().isoformat(), json.dumps(valor_elegido)))
+                self.db.execute("""INSERT INTO registro_aprobaciones (sku_id,campo,ts,aprobador,rol,fuente_revisada,
+                    desvio_revisado,justificacion,resultado,accion_original,valor_aplicado) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
+                                (sku_id, campo, ahora().isoformat(), aprobador, rol, "primera firma", None,
+                                 justificacion, "primera_firma", prop["accion_propuesta"], None))
+                self.db.commit()
+                METRICAS.inc("hitl_primeras_firmas")
+                return {"sku_id": sku_id, "campo": campo, "resultado": "primera_firma", "valor_aplicado": None}
+            if primera["aprobador"] == aprobador:
+                raise PermissionError("la segunda firma tiene que ser de otra persona")
+            if "director_tecnico" not in (primera["rol"], rol):
+                raise PermissionError("una de las dos firmas tiene que ser del director técnico")
+            self.db.execute("DELETE FROM firmas_parciales WHERE sku_id=? AND campo=?", (sku_id, campo))
         if prop["estado"] == "bloqueado_pendiente_aprobacion" and decision == "aprobado" and rol != "lider_catalogo" \
                 and prop["rotacion"] == "alta":
             raise PermissionError("bloquear un SKU de alta rotación requiere al líder")
@@ -122,13 +155,13 @@ class ColaHITL:
                 ESCRITOR.bloquear(sku_id, motivo=justificacion)
             elif valor is not None:
                 ESCRITOR.corregir(sku_id, campo, prop["valor_actual"], valor, fuente=f"aprobación {rol}",
-                                  version=prop.get("umbrales_version"))
+                                  version=prop.get("umbrales_version"), aprobado_por_humano=True)
                 aplicado = valor
         fuente_rev = ", ".join(e["cita"] for e in prop.get("evidencias", [])) or "sin fuente"
         self.db.execute("""INSERT INTO registro_aprobaciones (sku_id,campo,ts,aprobador,rol,fuente_revisada,
             desvio_revisado,justificacion,resultado,accion_original,valor_aplicado) VALUES (?,?,?,?,?,?,?,?,?,?,?)""",
                         (sku_id, campo, ahora().isoformat(), aprobador, rol, fuente_rev,
-                         prop["desvio_vs_rango_pct"], justificacion, decision, prop["accion_propuesta"], aplicado))
+                         prop.get("desvio_vs_rango_pct"), justificacion, decision, prop["accion_propuesta"], aplicado))
         if decision != "pedido_mas_evidencia":
             self.db.execute("UPDATE cola SET resuelto=1 WHERE sku_id=? AND campo=?", (sku_id, campo))
         self.db.commit()
@@ -175,20 +208,27 @@ def notificar(texto: str, destinatario: str) -> str:
 
 
 # ---------------- escritura en el catálogo ----------------
+CAMPOS_CLINICOS = {"concentracion_mg", "unidades_envase", "condicion_venta", "cadena_frio"}
+
+
 class EscritorCatalogo:
     """Única puerta de escritura. Acciones prohibidas (precio, tabla de
     rangos, borrar histórico) no existen como método: no hay forma de que
     el agente las ejecute."""
 
-    def __init__(self) -> None:
+    CAMPOS_REGISTRO = ["ts", "sku_id", "campo", "valor_anterior", "valor_nuevo", "fuente", "umbrales_version",
+                       "aprobado_por_humano", "modo"]
+
+    def __init__(self, archivo: str = "correcciones_aplicadas.csv") -> None:
         self.dry_run = os.getenv("DRY_RUN", "1") == "1"
+        self.archivo = archivo
 
     def _registrar(self, fila: dict) -> None:
         REPORTS_DIR.mkdir(exist_ok=True)
-        p = REPORTS_DIR / "correcciones_aplicadas.csv"
+        p = REPORTS_DIR / self.archivo
         nuevo = not p.exists()
         with open(p, "a", newline="", encoding="utf-8") as f:
-            w = csv.DictWriter(f, fieldnames=list(fila))
+            w = csv.DictWriter(f, fieldnames=self.CAMPOS_REGISTRO, restval="", extrasaction="ignore")
             if nuevo:
                 w.writeheader()
             w.writerow(fila)
@@ -209,15 +249,33 @@ class EscritorCatalogo:
             raise ErrorPermanente(f"HTTP {r.status_code}: {r.text[:200]}")
 
     def corregir(self, sku_id: str, campo: str, valor_anterior: float, valor: float, fuente: str,
-                 version: str | None) -> None:
+                 version: str | None, aprobado_por_humano: bool = False) -> None:
+        if campo in CAMPOS_CLINICOS and not aprobado_por_humano:
+            # Defensa en profundidad: aunque una regla fallara, un campo clínico
+            # nunca se escribe sin firma humana.
+            METRICAS.inc("escrituras_clinicas_bloqueadas")
+            raise PermissionError(f"campo clínico '{campo}': solo con aprobación humana")
         fila = {"ts": ahora().isoformat(), "sku_id": sku_id, "campo": campo, "valor_anterior": valor_anterior,
                 "valor_nuevo": valor, "fuente": fuente, "umbrales_version": version,
-                "modo": "dry_run" if self.dry_run else "api"}
+                "aprobado_por_humano": aprobado_por_humano, "modo": "dry_run" if self.dry_run else "api"}
         if not self.dry_run:
             self._patch(sku_id, {"campo": campo, "valor": valor, "fuente": fuente})
         self._registrar(fila)
         METRICAS.inc("correcciones_escritas")
         log("INFO", "corrección escrita", **fila)
+
+    def retener_dispensa(self, sku_id: str, motivo: str) -> None:
+        """Acción PROTECTORA y reversible de la variante healthcare: el SKU sigue
+        publicado, pero cada pedido pasa por validación del farmacéutico antes de
+        despacharse. No corrige ni borra nada, por eso puede ser automática."""
+        fila = {"ts": ahora().isoformat(), "sku_id": sku_id, "campo": "RETENCION_DISPENSA", "valor_anterior": False,
+                "valor_nuevo": True, "fuente": f"automática por seguridad del paciente: {motivo}", "umbrales_version": None,
+                "aprobado_por_humano": False, "modo": "dry_run" if self.dry_run else "api"}
+        if not self.dry_run:
+            self._patch(sku_id, {"campo": "retencion_dispensa", "valor": True, "fuente": motivo})
+        self._registrar(fila)
+        METRICAS.inc("retenciones_dispensa")
+        log("WARNING", "dispensa retenida hasta validación farmacéutica", sku_id=sku_id, motivo=motivo)
 
     def bloquear(self, sku_id: str, motivo: str) -> None:
         fila = {"ts": ahora().isoformat(), "sku_id": sku_id, "campo": "ACTIVO", "valor_anterior": True,

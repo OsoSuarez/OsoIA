@@ -53,6 +53,14 @@ def _llamar(mensajes: list, esquema: dict, nombre: str, temperatura: float, sist
 
 
 def llamar_json(mensajes: list, esquema: dict, nombre: str, temperatura: float = 0.0,
-                sistema: str = "Respondé solo con datos presentes en la entrada. Si no está, devolvé null.") -> dict:
+                sistema: str = "Respondé solo con datos presentes en la entrada. Si no está, devolvé null.",
+                verificar_phi: bool = False) -> dict:
+    if verificar_phi:  # variante healthcare: nada con PHI sale hacia el proveedor del modelo
+        from .salud import guardia_phi
+        for m in mensajes:
+            partes = m["content"] if isinstance(m["content"], list) else [{"type": "text", "text": m["content"]}]
+            for parte in partes:
+                if parte.get("type") == "text":
+                    guardia_phi(parte["text"])
     with METRICAS.cronometro(f"llm_{nombre}"):
         return CB_LLM.llamar(_llamar, mensajes, esquema, nombre, temperatura, sistema)
