@@ -1,0 +1,45 @@
+name: Agente vuelos baratos BUE → MAD/ROM
+
+on:
+  schedule:
+    - cron: "17 11 * * *"   # todos los días ~08:17 hora Argentina
+  workflow_dispatch:
+    inputs:
+      flex:
+        description: "Días de flexibilidad ±"
+        default: "0"
+
+permissions:
+  contents: write
+  issues: write
+
+jobs:
+  buscar:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: vuelos-baratos
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: pip install -r requirements.txt
+      - id: agente
+        env:
+          SERPAPI_KEY: ${{ secrets.SERPAPI_KEY }}
+          FLEX_DIAS: ${{ inputs.flex || '0' }}
+          UMBRAL_PRECIO: ${{ vars.UMBRAL_PRECIO || '1100' }}
+        run: python agente_vuelos.py --salida reporte.md && cat reporte.md >> "$GITHUB_STEP_SUMMARY"
+      - name: Guardar historial de precios
+        run: |
+          git config user.name "agente-vuelos"
+          git config user.email "agente-vuelos@users.noreply.github.com"
+          git add historial_precios.json
+          git commit -m "Historial de precios $(date -u +%F)" || exit 0
+          git push
+      - name: Abrir issue si hay alerta
+        if: steps.agente.outputs.alerta == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh issue create --title "🔔 Vuelo barato BUE → Europa $(date -u +%F)" --body-file reporte.md
