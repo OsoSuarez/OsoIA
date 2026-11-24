@@ -121,11 +121,13 @@ details li{margin-bottom:4px}
       </div>
 
       <div class="grp"><h3>Aumentos</h3></div>
+      <label class="chk"><input type="checkbox" id="p_useIdx"><span>Aplicar aumentos por índices Open Book (FADEEAC, CEDOL, dólar)</span></label>
+      <div class="field"><label for="p_month">Mes a simular</label><select id="p_month"></select><span class="hint" id="idxTxt"></span></div>
       <div class="row2">
-        <div class="field"><label for="p_wage">Salarial %</label><input type="number" id="p_wage" step="0.5"></div>
-        <div class="field"><label for="p_whInc">Warehouse % (Cedol)</label><input type="number" id="p_whInc" step="0.5"></div>
+        <div class="field"><label for="p_wage">Extra salarial %</label><input type="number" id="p_wage" step="0.5"></div>
+        <div class="field"><label for="p_whInc">Extra warehouse %</label><input type="number" id="p_whInc" step="0.5"></div>
       </div>
-      <div class="field"><label for="p_trInc">Transporte %</label><input type="number" id="p_trInc" step="0.5"></div>
+      <div class="field"><label for="p_trInc">Extra transporte %</label><input type="number" id="p_trInc" step="0.5"><span class="hint">Los extras se suman a los índices (por ejemplo, una negociación aparte).</span></div>
       <div class="field"><label for="p_hheePct">HHEE y adicionales, % sobre personal</label><input type="number" id="p_hheePct" step="0.5"><span class="hint">Nov: 79,9 M sobre 372,4 M</span></div>
 
       <div class="grp"><h3>Moneda y referencia</h3></div>
@@ -163,6 +165,34 @@ details li{margin-bottom:4px}
           <p class="sub">La columna «Planilla Nov» es la columna N del Resumen. «% total» y «% whse» del modelo se comparan con las columnas BX y BY.</p>
           <div class="scroll"><table id="conceptTable"></table></div>
           <p class="note" id="calibNote"></p>
+        </div>
+
+        <div class="tabpane" data-tab="openbook" hidden>
+          <h2 style="margin-top:14px">Aumentos Open Book</h2>
+          <p class="sub">Misma lógica que Costeo CD-47: ID ajusta cuando el índice acumulado contra la última base aplicada llega al 5%, y el aumento rige el mes siguiente. Cada línea de costo sigue su índice: personal y horas extra con FADEEAC; maquinaria e inversiones con el dólar; comedor, seguridad y limpieza con CEDOL; distribución con CEDOL transporte. Almacenamiento, aduana, tecnología e insumos no tienen índice.</p>
+          <h3>Dónde está cada índice contra su gatillo</h3>
+          <div class="scroll" style="margin:8px 0 16px"><table id="obRacks"></table></div>
+          <h3>Trayectoria mensual del costo con las condiciones del escenario</h3>
+          <div class="scroll" style="margin:8px 0 16px"><table id="obTraj"></table></div>
+          <h3>Aumentos que se disparan en el horizonte</h3>
+          <div class="scroll" style="margin:8px 0 16px"><table id="obEvents"></table></div>
+          <div class="two">
+            <div>
+              <h3>Inflación mensual esperada, para meses sin índice publicado</h3>
+              <div class="row2" style="margin-top:8px">
+                <div class="field"><label for="infl_mo">FADEEAC MO (%/mes)</label><input type="number" id="infl_mo" data-infl="mo" step="0.1"></div>
+                <div class="field"><label for="infl_cedol">CEDOL s/TTE (%/mes)</label><input type="number" id="infl_cedol" data-infl="cedol" step="0.1"></div>
+                <div class="field"><label for="infl_usd">Dólar BNA (%/mes)</label><input type="number" id="infl_usd" data-infl="usd" step="0.1"></div>
+                <div class="field"><label for="infl_tte">CEDOL distribución (%/mes)</label><input type="number" id="infl_tte" data-infl="tte" step="0.1"></div>
+              </div>
+            </div>
+            <div>
+              <h3>Índices publicados a partir de noviembre</h3>
+              <p class="note">Cargá el valor cuando CEDOL o BNA lo publiquen. Si lo dejás vacío se proyecta.</p>
+              <div class="scroll"><table id="obIdx"></table></div>
+            </div>
+          </div>
+          <p class="note">Índices cargados hasta octubre 2026 (copia de Costeo CD-47 al 12/11/2026). Base vigente: warehouse junio 2026, transporte julio 2026.</p>
         </div>
 
         <div class="tabpane" data-tab="personal" hidden>
@@ -209,6 +239,7 @@ details li{margin-bottom:4px}
             <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
             <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
             <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
+            <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
             <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
           </ul>
         </details>
@@ -261,7 +292,15 @@ var GROUPS=['Personal','HHEE','Maquinarias','Almacenamiento','Inversiones','Gast
 
 function A(o){return o}
 var DEF=[];
-function add(o){DEF.push(o)}
+function FAMOF(o){
+  if(o.t==='rol'||o.t==='mgmt'||o.t==='hhee')return 'mo';
+  if(o.t==='maq')return 'usd';
+  if(o.t==='trips'||o.id==='x_idt'||o.id==='x_rf')return 'tte';
+  if(o.g==='Inversiones')return 'usd';
+  if(o.g==='Gastos operativos')return 'cedol';
+  return 'fijo';
+}
+function add(o){o.f=FAMOF(o);DEF.push(o)}
 // Personal (dotación promedio Nov sobre 25 días operativos; costo por día por HC)
 add({id:'mgmt',t:'mgmt',g:'Personal',n:'Management',monthly:28842439,alloc:A({adm:1})});
 add({id:'r_adm',t:'rol',g:'Personal',n:'Administrativos',heads:5.00,daily:215546,e:0,prod:0,alloc:A({adm:1})});
@@ -329,7 +368,7 @@ var TRIPS=[
 
 /* ---------- Estado ---------- */
 function clone(o){return JSON.parse(JSON.stringify(o))}
-var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false};
+var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
 var P=clone(P0), L=clone(DEF), TR=TRIPS.map(function(){return [0,0]});
 var HC0=0; DEF.forEach(function(l){if(l.t==='rol')HC0+=l.heads}); HC0+=1;
 var K=1;
@@ -340,13 +379,64 @@ function normAlloc(a){
   if(s<=0){r.sop=1;return r}
   for(k in a)r[k]=Math.max(0,a[k]||0)/s;return r;
 }
-function tripsCost(p,trips,trInc){
-  var s=0;TRIPS.forEach(function(r,i){s+=(trips[i][0]*r[2]+trips[i][1]*r[3])});
-  return s*(1+p.trInc);
+/* ---------- Índices Open Book (copia de Costeo CD-47 al 12/11/2026) ---------- */
+var MES_ES=['ene','feb','mar','abr','may','jun','jul','ago','sep','oct','nov','dic'];
+var OBF=['mo','cedol','usd','tte'];
+var OB_IDX={
+ '2026-06':{cedol:446801.36,mo:421085.95,tte:16399.8,usd:1500},
+ '2026-07':{cedol:457012.12,mo:434687.02,tte:16978.98,usd:1510},
+ '2026-08':{cedol:461871.98,mo:441207.33,tte:17230.61,usd:1530},
+ '2026-09':{cedol:472140.32,mo:452193.39,tte:17664.89,usd:1560},
+ '2026-10':{cedol:481487.75,mo:461960.77,tte:18107.09,usd:1560}};
+var OB_CFG={baseWhs:{mes:'2026-06',mo:421085.95,cedol:446801.36,usd:1500},baseTte:{mes:'2026-07',val:16978.98},umbral:5};
+var OB_TL=['2026-07','2026-08','2026-09','2026-10','2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06'];
+var OB_REF='2026-11', OB_SIM=OB_TL.slice(4);
+function mk(k,n){var a=k.split('-').map(Number),y=a[0],m=a[1]+n;y+=Math.floor((m-1)/12);m=((m-1)%12+12)%12+1;return y+'-'+(m<10?'0':'')+m}
+function lbl(k){var a=k.split('-');return MES_ES[+a[1]-1]+'-'+a[0].slice(2)}
+function hasv(v){return v!==null&&v!==undefined&&v!==''&&!isNaN(+v)}
+function obIndices(p){var o={},k;for(k in OB_IDX)o[k]=OB_IDX[k];for(k in (p.idxOv||{}))o[k]=Object.assign({},o[k]||{},p.idxOv[k]);return o}
+function idxFull(ind,infl,until){
+  var keys=Object.keys(ind).sort(),out={},last={};
+  for(var k=keys[0];k<=until;k=mk(k,1)){
+    var r=ind[k]||{},row={proj:{}};
+    OBF.forEach(function(f){
+      if(hasv(r[f])){row[f]=+r[f];last[f]=+r[f]}
+      else if(last[f]!=null){row[f]=last[f]*(1+((infl&&infl[f])||0)/100);last[f]=row[f];row.proj[f]=true}
+      else row[f]=null});
+    out[k]=row}
+  return out;
 }
+function obFactors(p){
+  var ind=obIndices(p),I=idxFull(ind,p.infl,OB_TL[OB_TL.length-1]),u=OB_CFG.umbral/100,res={whs:{},tte:{},events:[],I:I,ind:ind},bw=OB_CFG.baseWhs;
+  var b0={mes:bw.mes,mo:bw.mo,cedol:bw.cedol,usd:bw.usd},cur={mes:b0.mes,mo:b0.mo,cedol:b0.cedol,usd:b0.usd};
+  OB_TL.forEach(function(m){
+    var pm=mk(m,-1),v=I[pm];
+    if(v&&pm>cur.mes&&v.mo&&v.cedol){
+      var vmo=v.mo/cur.mo-1,vce=v.cedol/cur.cedol-1;
+      if(vmo>=u||vce>=u){var usd=v.usd||cur.usd;
+        res.events.push({fam:'whs',mesAplica:m,mesIndice:pm,vmo:vmo,vce:vce,vusd:usd/cur.usd-1,proj:!!(v.proj.mo||v.proj.cedol)});
+        cur={mes:pm,mo:v.mo,cedol:v.cedol,usd:usd}}}
+    res.whs[m]={mo:cur.mo/b0.mo,cedol:cur.cedol/b0.cedol,usd:cur.usd/b0.usd}});
+  var t0=OB_CFG.baseTte.val,ct={mes:OB_CFG.baseTte.mes,val:t0};
+  OB_TL.forEach(function(m){
+    var pm=mk(m,-1),v=I[pm];
+    if(v&&pm>ct.mes&&v.tte){var vt=v.tte/ct.val-1;
+      if(vt>=u){res.events.push({fam:'tte',mesAplica:m,mesIndice:pm,vtte:vt,proj:!!v.proj.tte});ct={mes:pm,val:v.tte}}}
+    res.tte[m]={tte:ct.val/t0}});
+  return res;
+}
+function relFactors(p){
+  if(!p.useIdx)return {mo:1,cedol:1,usd:1,tte:1,fijo:1};
+  var Fx=obFactors(p),a=Fx.whs[OB_REF],b=Fx.whs[p.month]||a;
+  return {mo:b.mo/a.mo,cedol:b.cedol/a.cedol,usd:b.usd/a.usd,tte:(Fx.tte[p.month]||Fx.tte[OB_REF]).tte/Fx.tte[OB_REF].tte,fijo:1};
+}
+function lastRealIdx(ind,f){var ks=Object.keys(ind).filter(function(k){return hasv(ind[k][f])}).sort();return ks.length?ks[ks.length-1]:null}
+
+/* ---------- Motor de cálculo ---------- */
+function tripsCostRaw(trips){var s=0;TRIPS.forEach(function(r,i){s+=(trips[i][0]*r[2]+trips[i][1]*r[3])});return s}
 function compute(p,lines,trips,k){
-  var dVol=p.units/U0-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0;
-  // dotación
+  var dVol=p.units/U0-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0, RF=relFactors(p);
+  function mu(f){return (f==='mo'?1+p.wage:(f==='tte'?1+p.trInc:1+p.whInc))*(RF[f]||1)}
   var heads={};
   for(i=0;i<lines.length;i++){l=lines[i];
     if(l.t==='rol'){h=l.heads*(1+l.e*dVol)/(1+l.prod); if(p.round)h=Math.ceil(h-1e-9); heads[l.id]=h; hcTot+=h;}
@@ -355,24 +445,23 @@ function compute(p,lines,trips,k){
   var persByProc={},persTot=0;
   for(i=0;i<lines.length;i++){l=lines[i];c=0;
     switch(l.t){
-      case 'mgmt': c=l.monthly*(1+p.wage)*k;break;
-      case 'rol': c=heads[l.id]*l.daily*p.days*(1+p.wage)*k;break;
-      case 'maq': {var q=l.qty*(1+l.e*dVol); if(p.round)q=Math.ceil(q-1e-9); c=q*l.unit*dcR*(1+p.whInc); heads[l.id]=q;break;}
-      case 'alm': {var qq=l.qty*(1+(l.adu?p.dImp:p.dPos)); c=qq*l.rate*p.dc*(1+p.whInc); heads[l.id]=qq;break;}
+      case 'mgmt': c=l.monthly*mu('mo')*k;break;
+      case 'rol': c=heads[l.id]*l.daily*p.days*mu('mo')*k;break;
+      case 'maq': {var q=l.qty*(1+l.e*dVol); if(p.round)q=Math.ceil(q-1e-9); c=q*l.unit*dcR*mu(l.f); heads[l.id]=q;break;}
+      case 'alm': {var qq=l.qty*(1+(l.adu?p.dImp:p.dPos)); c=qq*l.rate*p.dc*mu(l.f); heads[l.id]=qq;break;}
       case 'amt': {
         var m=l.amount*(1+l.e*dVol);
         if(l.imp)m=l.amount*(1+p.dImp);
         if(l.hc)m=l.amount*(hcTot/HC0);
-        c=m*(l.tr?(1+p.trInc):(1+p.whInc)); if(l.g==='Inversiones')c=l.amount;
+        c=m*mu(l.f);
         break;}
-      case 'trips': c=tripsCost(p,trips); break;
+      case 'trips': c=tripsCostRaw(trips)*mu('tte'); break;
       case 'hhee': c=0;break;
     }
     items.push({l:l,c:c,h:heads[l.id]});
     if(l.g==='Personal'){persTot+=c;var al=normAlloc(l.alloc),kk;for(kk in al)persByProc[kk]=(persByProc[kk]||0)+c*al[kk];}
   }
-  // HHEE
-  var hh=persTot*p.hheePct*(1+0);
+  var hh=persTot*p.hheePct;
   for(i=0;i<items.length;i++){if(items[i].l.t==='hhee')items[i].c=hh;}
   var byProc={},byGrp={},total=0,hcProc={};
   PROC.forEach(function(x){byProc[x.id]=0;hcProc[x.id]=0});
@@ -392,7 +481,7 @@ function compute(p,lines,trips,k){
     var rec=PROC.filter(function(x){return x.r}),w=0;rec.forEach(function(x){w+=direct[x.id]});
     ['tec','adm','sop'].forEach(function(o){rec.forEach(function(x){byProc[x.id]+=direct[o]*direct[x.id]/w});byProc[o]=0});
   }
-  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,
+  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,RF:RF,
           dist:byGrp['Distribución'],whse:total-byGrp['Distribución']};
 }
 
@@ -402,7 +491,7 @@ K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
 /* ---------- Render: estructura ---------- */
-var TABS=[['concepto','Por concepto'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
@@ -446,6 +535,13 @@ function buildTables(){
   h='<thead><tr><th>Zona</th><th>Vehículo</th><th>Tarifa 1ra vuelta</th><th>Tarifa 2da vuelta</th><th>Viajes extra 1ra</th><th>Viajes extra 2da</th><th>Costo extra (M)</th></tr></thead><tbody>';
   TRIPS.forEach(function(r,i){h+='<tr><td style="text-align:left">'+r[0]+'</td><td style="text-align:left">'+r[1]+'</td><td>'+f0(r[2])+'</td><td>'+(r[0].indexOf('frío')>-1?'—':f0(r[3]))+'</td><td><input type="number" class="s" data-trip="'+i+'" data-v="0" min="0" step="1" value="0"></td><td>'+(r[0].indexOf('frío')>-1?'—':'<input type="number" class="s" data-trip="'+i+'" data-v="1" min="0" step="1" value="0">')+'</td><td data-tc="'+i+'"></td></tr>'});
   h+='</tbody>';$('tTrips').innerHTML=h;
+  // Índices publicados desde noviembre
+  h='<thead><tr><th>Mes</th><th>MO</th><th>CEDOL</th><th>USD</th><th>TTE</th></tr></thead><tbody>';
+  OB_SIM.slice(0,6).forEach(function(m){
+    h+='<tr><td>'+lbl(m)+'</td>';
+    OBF.forEach(function(f){h+='<td><input type="number" class="s" style="width:88px" data-idx="'+m+'|'+f+'" step="0.01" aria-label="Índice '+f+' '+lbl(m)+'"></td>'});
+    h+='</tr>';});
+  h+='</tbody>';$('obIdx').innerHTML=h;
   // Asignación
   h='<thead><tr><th>Línea</th>';PROC.forEach(function(p){h+='<th title="'+p.n+'">'+p.n.split(' ')[0]+'</th>'});h+='<th>Σ</th></tr></thead><tbody>';
   L.forEach(function(l){if(l.t==='hhee')return;
@@ -512,7 +608,7 @@ function render(){
   var pe=R.byGrp['Personal']+R.byGrp['HHEE'],pb=B.byGrp['Personal']+B.byGrp['HHEE'];
   $('persBase').textContent=M(pb);$('persEsc').innerHTML='<b>'+M(pe)+'</b>';
   var hcs=0;R.items.forEach(function(x){if(x.l.t==='rol')hcs+=x.h});$('hcTotCell').textContent=nf1.format(hcs+1);
-  Array.prototype.forEach.call(document.querySelectorAll('[data-tc]'),function(td){var i=+td.getAttribute('data-tc');td.textContent=M((TR[i][0]*TRIPS[i][2]+TR[i][1]*TRIPS[i][3])*(1+P.trInc))});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tc]'),function(td){var i=+td.getAttribute('data-tc');td.textContent=M((TR[i][0]*TRIPS[i][2]+TR[i][1]*TRIPS[i][3])*(1+P.trInc)*(R.RF.tte||1))});
   Array.prototype.forEach.call(document.querySelectorAll('[data-sum]'),function(td){var l=lineById(td.getAttribute('data-sum')),s=0,k2;for(k2 in l.alloc)s+=l.alloc[k2]||0;
     td.textContent=pc(s,0);td.className=Math.abs(s-1)>0.001?'warn':'';});
   // Sensibilidad
@@ -522,14 +618,60 @@ function render(){
     var pp=clone(P);pp.units=P.units*(1+dv/100);var r=compute(pp,L,TR,K);
     h+='<tr'+(dv===0?' class="tot"':'')+'><td>'+(dv>0?'+':'')+dv+'%</td><td>'+f0(pp.units)+'</td><td>'+M(r.total)+'</td><td>'+sg(delta(r.total,ref.total))+'</td><td>'+nf2.format(r.total/pp.units)+'</td><td class="'+dcls(delta(r.total/pp.units,ref.total/P.units))+'">'+sg(delta(r.total/pp.units,ref.total/P.units))+'</td><td>'+M(r.byProc.pik)+'</td><td>'+M(r.byProc.dis)+'</td></tr>';});
   h+='</tbody>';$('tSens').innerHTML=h;
+  renderOB();
   var dv=P.units/U0-1;
   $('dvol_txt').textContent=(dv>=0?'+':'')+(dv*100).toFixed(1).replace('.',',')+'% vs noviembre ('+f0(U0)+' unidades)';
   $('p_dvol').value=Math.round(dv*100);
 }
 
+function stateOf(acc,u){return acc>=u?'<span class="pill" style="background:var(--bad);color:#fff">Dispara</span>':(acc>=u*0.6?'<span class="pill" style="color:var(--warn)">Atención</span>':'<span class="pill">Tranquilo</span>')}
+function renderOB(){
+  var Fx=obFactors(P),ind=Fx.ind,RF=relFactors(P),u=OB_CFG.umbral/100,h;
+  var fams=[['mo','FADEEAC mano de obra'],['cedol','CEDOL sin transporte'],['usd','Dólar BNA venta'],['tte','CEDOL distribución']];
+  h='<thead><tr><th>Índice</th><th>Base vigente</th><th>Último real</th><th>Acumulado vs base</th><th>Estado</th><th>Efecto vs noviembre en '+lbl(P.month)+'</th></tr></thead><tbody>';
+  fams.forEach(function(fm){
+    var f=fm[0],lr=lastRealIdx(ind,f);if(!lr)return;
+    var fam=f==='tte'?'tte':'whs',evs=Fx.events.filter(function(e){return e.fam===fam&&e.mesIndice<lr}),base,bm;
+    if(f==='tte'){if(evs.length){bm=evs[evs.length-1].mesIndice;base=Fx.I[bm].tte}else{bm=OB_CFG.baseTte.mes;base=OB_CFG.baseTte.val}}
+    else{if(evs.length){bm=evs[evs.length-1].mesIndice;base=Fx.I[bm][f]}else{bm=OB_CFG.baseWhs.mes;base=OB_CFG.baseWhs[f]}}
+    var v=+ind[lr][f],acc=v/base-1;
+    h+='<tr><td>'+fm[1]+'</td><td>'+lbl(bm)+': '+f0(base)+'</td><td>'+lbl(lr)+': '+f0(v)+'</td><td>'+sg(acc,2)+'</td><td>'+(f==='usd'?'<span class="pill">Acompaña</span>':stateOf(acc,u))+'</td><td>'+(P.useIdx?sg(RF[f]-1,2):'—')+'</td></tr>';
+  });
+  h+='</tbody>';$('obRacks').innerHTML=h;
+  // trayectoria
+  var prev=null,first=null;
+  h='<thead><tr><th>Mes</th><th>Costo total (M)</th><th>Δ vs mes anterior</th><th>Δ vs noviembre</th><th>$/unidad</th><th>MO</th><th>CEDOL</th><th>USD</th><th>TTE</th><th></th></tr></thead><tbody>';
+  OB_SIM.forEach(function(m){
+    var pp=clone(P);pp.month=m;pp.useIdx=true;var r=compute(pp,L,TR,K);if(first==null)first=r.total;
+    var ev=Fx.events.filter(function(e){return e.mesAplica===m}),tag='';
+    ev.forEach(function(e){tag+='<span class="pill" style="color:var(--bad)">'+(e.fam==='tte'?'Transporte':'Warehouse')+(e.proj?' (estimado)':'')+'</span> '});
+    h+='<tr'+(m===P.month&&P.useIdx?' class="tot"':'')+'><td>'+lbl(m)+'</td><td>'+M(r.total)+'</td><td class="'+(prev==null?'':dcls(delta(r.total,prev)))+'">'+(prev==null?'—':sg(delta(r.total,prev)))+'</td><td class="'+dcls(delta(r.total,first))+'">'+(m===OB_REF?'—':sg(delta(r.total,first)))+'</td><td>'+nf2.format(r.total/P.units)+'</td><td>'+sg(r.RF.mo-1)+'</td><td>'+sg(r.RF.cedol-1)+'</td><td>'+sg(r.RF.usd-1)+'</td><td>'+sg(r.RF.tte-1)+'</td><td style="text-align:left">'+tag+'</td></tr>';
+    prev=r.total;
+  });
+  h+='</tbody>';$('obTraj').innerHTML=h;
+  // eventos
+  h='<thead><tr><th>Aplica</th><th>Familia</th><th>Índice base del cálculo</th><th>Variación</th><th>Tipo</th></tr></thead><tbody>';
+  Fx.events.forEach(function(e){
+    h+='<tr><td>'+lbl(e.mesAplica)+'</td><td style="text-align:left">'+(e.fam==='tte'?'Transporte':'Warehouse')+'</td><td>'+lbl(e.mesIndice)+'</td><td>'+(e.fam==='tte'?'TTE '+sg(e.vtte,2):'MO '+sg(e.vmo,2)+' · CEDOL '+sg(e.vce,2)+' · USD '+sg(e.vusd,2))+'</td><td>'+(e.proj?'<span class="pill" style="color:var(--warn)">Estimado</span>':'<span class="pill" style="color:var(--bad)">Por índice real</span>')+'</td></tr>';
+  });
+  if(!Fx.events.length)h+='<tr><td colspan="5" style="text-align:left">Ningún gatillo en el horizonte.</td></tr>';
+  h+='</tbody>';$('obEvents').innerHTML=h;
+  // placeholders de proyección
+  Array.prototype.forEach.call(document.querySelectorAll('[data-idx]'),function(inp){
+    var pr=inp.getAttribute('data-idx').split('|'),row=Fx.I[pr[0]];
+    inp.placeholder=row&&row[pr[1]]!=null?'~'+f0(row[pr[1]]):'';
+  });
+  // texto del panel
+  var nxt=Fx.events.filter(function(e){return e.mesAplica>P.month})[0];
+  $('idxTxt').innerHTML=P.useIdx?('Vs noviembre: MO '+sg(RF.mo-1)+' · CEDOL '+sg(RF.cedol-1)+' · USD '+sg(RF.usd-1)+' · TTE '+sg(RF.tte-1)+(nxt?'<br>Próximo gatillo: '+lbl(nxt.mesAplica)+(nxt.proj?' (estimado)':''):'')):'Índices desactivados: solo rigen los extras.';
+}
+
 /* ---------- Eventos ---------- */
 var PF={units:0,days:0,dc:0,dPos:1,dImp:1,wage:1,whInc:1,trInc:1,hheePct:1,fx:0,budget:0,netRev:0};
 function syncParams(){
+  $('p_useIdx').checked=P.useIdx;
+  $('p_month').innerHTML=OB_SIM.map(function(m){return '<option value="'+m+'"'+(m===P.month?' selected':'')+'>'+lbl(m)+'</option>'}).join('');
+  OBF.forEach(function(f){$('infl_'+f).value=P.infl[f]});
   Object.keys(PF).forEach(function(k){var el=$('p_'+k);el.value=PF[k]?+(P[k]*100).toFixed(3):P[k]});
   $('p_round').checked=P.round;$('p_prorate').checked=P.prorate;
 }
@@ -538,11 +680,15 @@ function bind(){
     $('p_'+k).addEventListener('input',function(e){var v=parseFloat(e.target.value);if(isNaN(v))return;P[k]=PF[k]?v/100:v;render();});
   });
   $('p_dvol').addEventListener('input',function(e){P.units=Math.round(U0*(1+parseFloat(e.target.value)/100));$('p_units').value=P.units;render();});
+  $('p_useIdx').addEventListener('change',function(e){P.useIdx=e.target.checked;render()});
+  $('p_month').addEventListener('change',function(e){P.month=e.target.value;render()});
   $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
   $('p_prorate').addEventListener('change',function(e){P.prorate=e.target.checked;render()});
   document.addEventListener('input',function(e){
     var t=e.target;if(t.tagName!=='INPUT'||t.type!=='number')return;
+    if(t.hasAttribute('data-idx')){var pr=t.getAttribute('data-idx').split('|');P.idxOv[pr[0]]=P.idxOv[pr[0]]||{};if(t.value==='')delete P.idxOv[pr[0]][pr[1]];else P.idxOv[pr[0]][pr[1]]=parseFloat(t.value);render();return}
     var v=parseFloat(t.value);if(isNaN(v))v=0;
+    if(t.hasAttribute('data-infl')){P.infl[t.getAttribute('data-infl')]=v;render();return}
     if(t.hasAttribute('data-trip')){TR[+t.getAttribute('data-trip')][+t.getAttribute('data-v')]=v;render();return}
     var id=t.getAttribute('data-id');if(!id)return;var l=lineById(id);
     if(t.hasAttribute('data-al')){l.alloc[t.getAttribute('data-al')]=v/100;render();return}
