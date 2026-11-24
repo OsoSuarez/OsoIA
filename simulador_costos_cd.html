@@ -102,6 +102,17 @@ details li{margin-bottom:4px}
 .cc .lg i{display:inline-block;width:10px;height:3px;margin-right:5px;vertical-align:middle;border-radius:2px}
 td.proj,th.proj{background:var(--surface2)}
 th.proj{color:var(--accent)}
+.flow{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;margin:10px 0 18px}
+.flow .fl{border:1px solid var(--line);border-radius:8px;padding:10px 14px;background:var(--surface);min-width:120px}
+.flow .fl span{display:block;font-size:11px;color:var(--muted)}
+.flow .fl b{font-family:var(--f-head);font-size:20px;font-variant-numeric:tabular-nums}
+.flow .fl.out{border-color:var(--accent);background:var(--accent-soft)}
+.flow .op{align-self:center;font-family:var(--f-head);font-size:20px;color:var(--muted)}
+td input.w{width:120px;text-align:left}
+#simTable td input,#nsTable td input[type=number]{width:108px}
+#nsTable td input.s{width:72px}
+#nsTable td input.w{width:200px}
+td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--input-line);background:var(--input);color:var(--ink)}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s}}
 </style>
 
@@ -118,13 +129,9 @@ th.proj{color:var(--accent)}
     <aside class="panel" aria-label="Supuestos del escenario">
       <h2 style="margin-bottom:10px">Escenario</h2>
 
-      <div class="grp"><h3>Volumen</h3></div>
-      <div class="field">
-        <label for="p_units">Unidades pickeadas por mes</label>
-        <input type="number" id="p_units" step="10000" min="0">
-        <input type="range" id="p_dvol" min="-50" max="80" step="1" aria-label="Variación de volumen en porcentaje">
-        <span class="hint" id="dvol_txt"></span>
-      </div>
+      <div class="grp"><h3>Mes a simular</h3></div>
+      <div class="field"><select id="p_month" aria-label="Mes a simular"></select><span class="hint" id="volTxt"></span><span class="hint">El volumen se arma en la solapa Simulación.</span></div>
+      <div class="grp"><h3>Operación</h3></div>
       <div class="row2">
         <div class="field"><label for="p_days">Días operativos</label><input type="number" id="p_days" min="1" max="31" step="1"></div>
         <div class="field"><label for="p_dc">Días del mes</label><input type="number" id="p_dc" min="28" max="31" step="1"></div>
@@ -136,7 +143,7 @@ th.proj{color:var(--accent)}
 
       <div class="grp"><h3>Aumentos</h3></div>
       <label class="chk"><input type="checkbox" id="p_useIdx"><span>Aplicar aumentos por índices Open Book (FADEEAC, CEDOL, dólar)</span></label>
-      <div class="field"><label for="p_month">Mes a simular</label><select id="p_month"></select><span class="hint" id="idxTxt"></span></div>
+      <div class="field"><span class="hint" id="idxTxt"></span></div>
       <div class="row2">
         <div class="field"><label for="p_wage">Extra salarial %</label><input type="number" id="p_wage" step="0.5"></div>
         <div class="field"><label for="p_whInc">Extra warehouse %</label><input type="number" id="p_whInc" step="0.5"></div>
@@ -198,12 +205,39 @@ th.proj{color:var(--accent)}
           <p class="note" id="calibNote"></p>
         </div>
 
+        <div class="tabpane" data-tab="simulacion" hidden>
+          <h2 style="margin-top:14px">Simulación de volumen</h2>
+          <p class="sub">Órdenes por mes, multiplicadas por el basket size (unidades por orden) dan las unidades. Las unidades divididas por las unidades por línea dan las líneas. Esas unidades y líneas mueven el costo de todas las solapas. Base de órdenes: plan de tu planilla Darkstore Cost 2027 (solapa Órdenes Q1).</p>
+          <h3>Cadena del mes simulado</h3>
+          <div class="flow" id="simFlow"></div>
+          <div class="charts" id="simCharts"></div>
+          <h3>Volumen por mes</h3>
+          <p class="sub">Las celdas amarillas se editan. Nov-26 a mar-27 vienen del plan de órdenes por tienda; abr-27 a jun-27 repiten marzo hasta que cargues otra cosa.</p>
+          <div class="fgrid" style="margin-top:6px">
+            <div class="field"><label for="sim_aovD">Δ % basket size, todos los meses</label><input type="number" id="sim_aovD" data-sg="aovD" step="0.5"></div>
+          </div>
+          <div class="scroll" style="margin:6px 0 18px"><table id="simTable"></table></div>
+          <h3>Tiendas nuevas adicionales al plan</h3>
+          <p class="sub">Cada tienda nueva suma órdenes según la rampa y resta la parte que canibaliza de las tiendas existentes. Dejé cargadas las tres aperturas de abril a junio de tu solapa Expansion. Las cuatro tiendas nuevas de nov-26 a mar-27 ya están dentro del plan de órdenes.</p>
+          <div class="scroll"><table id="nsTable"></table></div>
+          <div class="btns" style="margin-bottom:10px"><button id="ns_add">Agregar tienda</button></div>
+          <div class="fgrid">
+            <div class="field"><label for="ramp0">Rampa: % del régimen en el mes de apertura</label><input type="number" id="ramp0" data-ramp="0" step="5"></div>
+            <div class="field"><label for="ramp1">Mes 2 (%)</label><input type="number" id="ramp1" data-ramp="1" step="5"></div>
+            <div class="field"><label for="ramp2">Mes 3 (%)</label><input type="number" id="ramp2" data-ramp="2" step="5"></div>
+            <div class="field"><label for="ramp3">Mes 4 (%)</label><input type="number" id="ramp3" data-ramp="3" step="5"></div>
+            <div class="field"><label for="ramp4">Mes 5 y siguientes (%)</label><input type="number" id="ramp4" data-ramp="4" step="5"></div>
+          </div>
+          <details>
+            <summary>Órdenes por tienda del plan (Órdenes Q1)</summary>
+            <div class="scroll" style="margin-top:10px"><table id="stTable"></table></div>
+          </details>
+        </div>
+
         <div class="tabpane" data-tab="evolucion" hidden>
           <h2 style="margin-top:14px">Evolución del CD</h2>
           <p class="sub">Dic-25 a oct-26 son datos reales de tu solapa «Evolución CD». Desde nov-26 es la proyección del simulador con el escenario del panel: volumen, índices de aumento y extras. Las columnas con fondo gris son proyección.</p>
           <div class="fgrid">
-            <div class="field"><label for="ev_g">Crecimiento mensual de volumen (%)</label><input type="number" id="ev_g" data-ev="g" step="0.5"></div>
-            <div class="field"><label for="ev_src">Volumen base de nov-26</label><select id="ev_src"><option value="evo">Evolución CD: 3.674.567 u · 259.974 líneas</option><option value="res">Resumen de gastos: 3.432.736 u · 262.484 líneas</option></select></div>
             <div class="field"><label for="ev_pl">% líneas MFC</label><input type="number" id="ev_pl" data-ev="pLin" step="0.5"></div>
             <div class="field"><label for="ev_pu">% unidades MFC</label><input type="number" id="ev_pu" data-ev="pUni" step="0.5"></div>
             <div class="field"><label for="ev_pc">% del costo asignado a MFC</label><input type="number" id="ev_pc" data-ev="pCost" step="0.5"></div>
@@ -214,7 +248,7 @@ th.proj{color:var(--accent)}
           <h3>Costo por línea movida, por proceso (ARS)</h3>
           <p class="sub">Muestra qué proceso explica los movimientos del costo por línea. Solo hay apertura por proceso desde nov-26, que es la base del simulador.</p>
           <div class="scroll" style="margin:8px 0 16px"><table id="evProc"></table></div>
-          <p class="note">Las dos planillas no usan el mismo volumen para noviembre (Resumen: 3,43 M unidades; Evolución CD: 3,67 M, octubre real). Elegí la base arriba. El volumen del escenario escala sobre la base elegida. El % costo sobre ventas proyectado usa el net revenue del panel, escalado con el volumen.</p>
+          <p class="note">El volumen proyectado (órdenes, unidades y líneas) sale de la solapa Simulación. El % costo sobre ventas proyectado usa el net revenue del panel, escalado con las unidades.</p>
         </div>
 
         <div class="tabpane" data-tab="openbook" hidden>
@@ -316,7 +350,7 @@ var PROC=[
 var PI={};PROC.forEach(function(p){PI[p.id]=p});
 
 /* ---------- Datos base: noviembre 2026 ---------- */
-var U0=3432736, LPU=262484/3432736;
+var UREF=1, LREF=1;
 var SHEET={ // Resumen de gastos 2026: col N (ARS), BX (% total), BY (% whse)
  'Personal':[372404481,.3402,.4639],'HHEE':[79904765,.0730,.0995],'Maquinarias':[42446614,.0388,.0529],
  'Almacenamiento':[103048355,.0941,.1284],'Inversiones':[15956394,.0146,.0199],'Gastos operativos':[90549036,.0827,.1128],
@@ -404,7 +438,27 @@ var TRIPS=[
 
 /* ---------- Estado ---------- */
 function clone(o){return JSON.parse(JSON.stringify(o))}
-var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',ev:{g:0,src:'evo',pLin:55.6,pUni:29.8,pCost:42.2},infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
+/* ---------- Simulación de volumen: Darkstore Cost 2027 ---------- */
+var SIM_M=['2026-11','2026-12','2027-01','2027-02','2027-03','2027-04','2027-05','2027-06'];
+// [tienda, nov, dic, ene, feb, mar, oct-26 real]
+var ST=[['Belgrano (Monroe)',54595,48445,40473,41978,48272,50178],['Rivadavia',43710,43095,36003,37342,30059,40173],['Centenera',45646,45004,37598,38997,31391,41953],['Las Heras',45385,44747,37383,27142,31211,41713],['Monserrat',34355,33871,28298,29350,33751,31575],['San Martín',34530,34044,28442,29500,33923,31736],['Báez',36928,36408,30417,28394,32651,33940],['Forest',31109,15336,12812,13289,15281,28592],['Vicente López',30640,30209,25238,26177,30102,28161],['Villa Martelli',34632,34145,28526,29587,34023,31830],['Perón',29148,28738,24009,24902,22909,26790],['San Juan',25693,25331,21163,21950,21455,23614],['Córdoba',24690,24342,20337,21093,24256,22692],['Lomas de Zamora',24061,23722,19819,20556,23638,22114],['Villa Lynch',19538,19263,16093,16692,19194,17957],['Palermo',46605,45949,38388,33844,38918,42834],['Beccar',20152,19868,16599,17216,19797,18521],['Ramos',15547,15328,12806,13282,15274,14289],['San Nicolás',22402,22086,18452,19138,22008,20589],['Mar del Plata',9954,9814,8199,8504,9779,9149],['Lanús',7696,7587,6339,6575,7560,7073],['Morón',11795,11629,9716,10077,11588,10841],['Rosario',14085,13886,11601,12033,13837,12945],['Nordelta',6208,6121,5114,5304,6099,5706],['Cerro de las Rosas',5890,5807,4851,5032,5786,5413],['Avellaneda',5631,5551,4638,4810,5532,5175],['La Plata',0,20000,20400,20400,20400,0],['Álvarez Thomas (nueva)',0,31078,25964,26929,30967,0],['Scalabrini Ortiz (nueva)',0,0,0,31139,35808,0],['Hija Centenera-Rivadavia (nueva)',0,0,0,0,32777,0],['Parque Centenario (nueva)',0,0,0,0,20997,0]];
+var SIMD={tp:[28,29,29,30,31,31,31,31],ly:[null,651490,554987,561442,636543,null,null,null],tl:[null,354753,287197,290928,368830,null,null,null],cal:[30,31,31,28,31,30,31,30],oct:{orders:625553,units:3674567,lines:259974}};
+function stSum(k){var s=0;ST.forEach(function(r){s+=r[k]});return s}
+var AVG_TIPO=Math.round(stSum(1)/28/100)*100;
+function SIM_DEF(){
+  var b=[1,2,3,4,5].map(stSum),mar=b[4];
+  return {base:b.concat([mar,mar,mar]),org:[0,0,0,0,0,0,0,0],aov:[5.874,6.08,6.00,5.99,6.22,6.22,6.22,6.22],ul:[14.134,14.134,14.134,14.134,14.134,14.134,14.134,14.134],
+    aovD:0,volMult:1,ramp:[40,55,70,85,100],
+    ns:[{n:'Hija Las Heras / Monserrat',open:'2027-04',reg:AVG_TIPO,canib:15},{n:'Núñez',open:'2027-05',reg:AVG_TIPO,canib:15},{n:'Agronomía',open:'2027-06',reg:AVG_TIPO,canib:15}]};
+}
+function volFor(p,month){
+  var S=p.sim,j=SIM_M.indexOf(month||p.month);if(j<0)j=0;
+  var base=S.base[j]*(1+(S.org[j]||0)/100),add=0,can=0,opened=0;
+  S.ns.forEach(function(n){var oi=SIM_M.indexOf(n.open);if(oi<0||j<oi)return;opened++;var r=S.ramp[Math.min(j-oi,S.ramp.length-1)]/100,a=n.reg*r;add+=a;can+=a*(n.canib||0)/100});
+  var mult=S.volMult||1,orders=(base+add-can)*mult,aov=S.aov[j]*(1+(S.aovD||0)/100),units=orders*aov,ul=S.ul[j]||1;
+  return {j:j,m:SIM_M[j],base:base*mult,add:add*mult,can:can*mult,orders:orders,aov:aov,units:units,ul:ul,lines:units/ul,tiendas:SIMD.tp[j]+opened,days:SIMD.cal[j]};
+}
+var P0={days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',ev:{pLin:55.6,pUni:29.8,pCost:42.2},sim:SIM_DEF(),infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
 var P=clone(P0), L=clone(DEF), TR=TRIPS.map(function(){return [0,0]});
 var HC0=0; DEF.forEach(function(l){if(l.t==='rol')HC0+=l.heads}); HC0+=1;
 var K=1;
@@ -471,7 +525,7 @@ function lastRealIdx(ind,f){var ks=Object.keys(ind).filter(function(k){return ha
 /* ---------- Motor de cálculo ---------- */
 function tripsCostRaw(trips){var s=0;TRIPS.forEach(function(r,i){s+=(trips[i][0]*r[2]+trips[i][1]*r[3])});return s}
 function compute(p,lines,trips,k){
-  var dVol=p.units/U0-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0, RF=relFactors(p);
+  var vv=volFor(p), dVol=vv.units/UREF-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0, RF=relFactors(p);
   function mu(f){return (f==='mo'?1+p.wage:(f==='tte'?1+p.trInc:1+p.whInc))*(RF[f]||1)}
   var heads={};
   for(i=0;i<lines.length;i++){l=lines[i];
@@ -517,17 +571,18 @@ function compute(p,lines,trips,k){
     var rec=PROC.filter(function(x){return x.r}),w=0;rec.forEach(function(x){w+=direct[x.id]});
     ['tec','adm','sop'].forEach(function(o){rec.forEach(function(x){byProc[x.id]+=direct[o]*direct[x.id]/w});byProc[o]=0});
   }
-  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,RF:RF,
+  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,RF:RF,vol:vv,
           dist:byGrp['Distribución'],whse:total-byGrp['Distribución']};
 }
 
 /* ---------- Calibración ---------- */
+UREF=volFor(P0).units;LREF=volFor(P0).lines;
 var rawBase=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),1);
 K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
 /* ---------- Render: estructura ---------- */
-var TABS=[['resumen','Resumen'],['concepto','Por concepto'],['evolucion','Evolución del CD'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['resumen','Resumen'],['simulacion','Simulación'],['evolucion','Evolución del CD'],['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
@@ -587,6 +642,7 @@ function buildTables(){
     h+='<td data-sum="'+l.id+'"></td></tr>';
   });
   h+='</tbody>';$('tAsig').innerHTML=h;
+  buildSim();
 }
 
 /* ---------- Render: resultados ---------- */
@@ -595,16 +651,16 @@ function dcls(v,inverse){return v>0.0005?'up':(v<-0.0005?'down':'')}
 function render(){
   var R=compute(P,L,TR,K), B=BASE, i;
   var tot=R.total, dT=delta(tot,B.total);
-  var usd=tot/P.fx, lines=P.units*LPU;
-  var pctRev=usd/P.netRev, pctRev0=B.total/P0.fx/P0.netRev;
+  var usd=tot/P.fx, V=R.vol, VB=B.vol, lines=V.lines;
+  var pctRev=usd/(P.netRev*R.vol.units/B.vol.units), pctRev0=B.total/P0.fx/P0.netRev;
   $('basepill').textContent='Base: noviembre 2026 · '+M(B.total)+' M ARS · TC '+f0(P0.fx);
   // KPIs
-  var dU=delta(tot/P.units,B.total/U0), dL=delta(tot/lines,B.total/(U0*LPU));
+  var dU=delta(tot/V.units,B.total/VB.units), dL=delta(tot/lines,B.total/VB.lines);
   var vsBud=usd-P.budget;
   var k=[
    ['Costo total del mes',M(tot)+' M','<span class="'+dcls(dT)+'">'+sg(dT)+'</span> vs noviembre'],
    ['Costo total en USD','US$ '+f0(usd),'Budget US$ '+f0(P.budget)+' · <span class="'+(vsBud>0?'up':'down')+'">'+(vsBud>0?'+':'')+f0(vsBud)+'</span>'],
-   ['Costo por unidad pickeada','$ '+nf2.format(tot/P.units),'<span class="'+dcls(dU)+'">'+sg(dU)+'</span> · base $ '+nf2.format(B.total/U0)],
+   ['Costo por unidad pickeada','$ '+nf2.format(tot/V.units),'<span class="'+dcls(dU)+'">'+sg(dU)+'</span> · base $ '+nf2.format(B.total/VB.units)],
    ['Costo por línea','$ '+f0(tot/lines),'<span class="'+dcls(dL)+'">'+sg(dL)+'</span> · '+f0(lines)+' líneas'],
    ['Logística / net revenue',pc(pctRev,2),'Base '+pc(pctRev0,2)+' · Plan 6,50%'],
    ['Warehouse / Distribución',pc(R.whse/tot,0)+' / '+pc(R.dist/tot,0),'Whse '+M(R.whse)+' M · Dist '+M(R.dist)+' M']
@@ -617,9 +673,9 @@ function render(){
   PROC.forEach(function(p){
     var v=R.byProc[p.id],b=B.byProc[p.id],d=delta(v,b);
     if(P.prorate&&!p.r&&p.id!=='dis'){h+='<tr style="opacity:.45"><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td><td colspan="8" style="text-align:left">Prorrateado en los procesos operativos</td></tr>';return}
-    h+='<tr><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td><td>'+(R.hcProc[p.id]?nf1.format(R.hcProc[p.id]):'—')+'</td><td>'+M(b)+'</td><td><b>'+M(v)+'</b></td><td class="'+dcls(d)+'">'+(b?sg(d):'—')+'</td><td>'+pc(v/tot)+'</td><td>'+nf2.format(v/P.units)+'</td><td>'+f0(v/P.fx/1000)+'</td><td><div class="bar"><i class="b" style="width:'+(b/mx*100)+'%"></i><i class="s" style="width:'+(v/mx*100)+'%;background:'+p.c+'"></i></div></td></tr>';
+    h+='<tr><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td><td>'+(R.hcProc[p.id]?nf1.format(R.hcProc[p.id]):'—')+'</td><td>'+M(b)+'</td><td><b>'+M(v)+'</b></td><td class="'+dcls(d)+'">'+(b?sg(d):'—')+'</td><td>'+pc(v/tot)+'</td><td>'+nf2.format(v/V.units)+'</td><td>'+f0(v/P.fx/1000)+'</td><td><div class="bar"><i class="b" style="width:'+(b/mx*100)+'%"></i><i class="s" style="width:'+(v/mx*100)+'%;background:'+p.c+'"></i></div></td></tr>';
   });
-  h+='<tr class="tot"><td>Total</td><td>'+nf1.format(R.hcTot)+'</td><td>'+M(B.total)+'</td><td>'+M(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>'+nf2.format(tot/P.units)+'</td><td>'+f0(usd/1000)+'</td><td></td></tr></tbody>';
+  h+='<tr class="tot"><td>Total</td><td>'+nf1.format(R.hcTot)+'</td><td>'+M(B.total)+'</td><td>'+M(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>'+nf2.format(tot/V.units)+'</td><td>'+f0(usd/1000)+'</td><td></td></tr></tbody>';
   $('procTable').innerHTML=h;
   // stack
   var sh='',lg='';
@@ -652,14 +708,14 @@ function render(){
   h='<thead><tr><th>Δ volumen</th><th>Unidades</th><th>Costo total (M)</th><th>Δ costo</th><th>$/unidad</th><th>Δ $/unidad</th><th>Picking (M)</th><th>Distribución (M)</th></tr></thead><tbody>';
   var ref=compute(P,L,TR,K);
   [-30,-20,-10,0,10,20,30,50].forEach(function(dv){
-    var pp=clone(P);pp.units=P.units*(1+dv/100);var r=compute(pp,L,TR,K);
-    h+='<tr'+(dv===0?' class="tot"':'')+'><td>'+(dv>0?'+':'')+dv+'%</td><td>'+f0(pp.units)+'</td><td>'+M(r.total)+'</td><td>'+sg(delta(r.total,ref.total))+'</td><td>'+nf2.format(r.total/pp.units)+'</td><td class="'+dcls(delta(r.total/pp.units,ref.total/P.units))+'">'+sg(delta(r.total/pp.units,ref.total/P.units))+'</td><td>'+M(r.byProc.pik)+'</td><td>'+M(r.byProc.dis)+'</td></tr>';});
+    var pp=clone(P);pp.sim.volMult=(P.sim.volMult||1)*(1+dv/100);var r=compute(pp,L,TR,K),pu=r.vol.units;
+    h+='<tr'+(dv===0?' class="tot"':'')+'><td>'+(dv>0?'+':'')+dv+'%</td><td>'+f0(pu)+'</td><td>'+M(r.total)+'</td><td>'+sg(delta(r.total,ref.total))+'</td><td>'+nf2.format(r.total/pu)+'</td><td class="'+dcls(delta(r.total/pu,ref.total/ref.vol.units))+'">'+sg(delta(r.total/pu,ref.total/ref.vol.units))+'</td><td>'+M(r.byProc.pik)+'</td><td>'+M(r.byProc.dis)+'</td></tr>';});
   h+='</tbody>';$('tSens').innerHTML=h;
   renderOB();
   renderEvo();
-  var dv=P.units/U0-1;
-  $('dvol_txt').textContent=(dv>=0?'+':'')+(dv*100).toFixed(1).replace('.',',')+'% vs noviembre ('+f0(U0)+' unidades)';
-  $('p_dvol').value=Math.round(dv*100);
+  var vv=R.vol;
+  $('volTxt').innerHTML=lbl(P.month)+': '+f0(vv.orders)+' órdenes · '+nf2.format(vv.units/1e6)+' M unidades · '+f0(vv.lines/1000)+' k líneas';
+  renderSim(R);
 }
 
 /* ---------- Evolución del CD ---------- */
@@ -678,14 +734,14 @@ var EVH={
 var EV_SRC={evo:{units:3674567,lines:259974},res:{units:3432736,lines:262484}};
 var nf3=new Intl.NumberFormat('es-AR',{minimumFractionDigits:3,maximumFractionDigits:3});
 function evBuild(){
-  var out=[],i,g=P.ev.g/100,src=EV_SRC[P.ev.src];
+  var out=[],i;
   for(i=0;i<EVH.m.length;i++){
     var o={m:EVH.m[i],real:true,ars:EVH.ars[i],usd:EVH.usd[i],fx:EVH.fx[i],lines:EVH.lines[i],units:EVH.units[i],lMFC:EVH.lMFC[i],uMFC:EVH.uMFC[i],pCost:EVH.pCost[i]/100,pVentas:EVH.pVentas[i]/100,prod:EVH.prod[i]};
     out.push(o);
   }
   OB_SIM.forEach(function(m,j){
-    var pp=clone(P);pp.month=m;pp.units=P.units*Math.pow(1+g,j);
-    var r=compute(pp,L,TR,K),vr=pp.units/U0,usd=r.total/P.fx,nr=P.netRev*vr,lines=src.lines*vr,units=src.units*vr;
+    var pp=clone(P);pp.month=m;
+    var r=compute(pp,L,TR,K),vr=r.vol.units/UREF,usd=r.total/P.fx,nr=P.netRev*vr,lines=r.vol.lines,units=r.vol.units;
     out.push({m:m,real:false,ars:r.total,usd:usd,fx:P.fx,lines:lines,units:units,lMFC:lines*P.ev.pLin/100,uMFC:units*P.ev.pUni/100,pCost:P.ev.pCost/100,pVentas:usd/nr,prod:null,byProc:r.byProc});
   });
   out.forEach(function(o,i){
@@ -807,7 +863,7 @@ function renderOB(){
     var pp=clone(P);pp.month=m;pp.useIdx=true;var r=compute(pp,L,TR,K);if(first==null)first=r.total;
     var ev=Fx.events.filter(function(e){return e.mesAplica===m}),tag='';
     ev.forEach(function(e){tag+='<span class="pill" style="color:var(--bad)">'+(e.fam==='tte'?'Transporte':'Warehouse')+(e.proj?' (estimado)':'')+'</span> '});
-    h+='<tr'+(m===P.month&&P.useIdx?' class="tot"':'')+'><td>'+lbl(m)+'</td><td>'+M(r.total)+'</td><td class="'+(prev==null?'':dcls(delta(r.total,prev)))+'">'+(prev==null?'—':sg(delta(r.total,prev)))+'</td><td class="'+dcls(delta(r.total,first))+'">'+(m===OB_REF?'—':sg(delta(r.total,first)))+'</td><td>'+nf2.format(r.total/P.units)+'</td><td>'+sg(r.RF.mo-1)+'</td><td>'+sg(r.RF.cedol-1)+'</td><td>'+sg(r.RF.usd-1)+'</td><td>'+sg(r.RF.tte-1)+'</td><td style="text-align:left">'+tag+'</td></tr>';
+    h+='<tr'+(m===P.month&&P.useIdx?' class="tot"':'')+'><td>'+lbl(m)+'</td><td>'+M(r.total)+'</td><td class="'+(prev==null?'':dcls(delta(r.total,prev)))+'">'+(prev==null?'—':sg(delta(r.total,prev)))+'</td><td class="'+dcls(delta(r.total,first))+'">'+(m===OB_REF?'—':sg(delta(r.total,first)))+'</td><td>'+nf2.format(r.total/r.vol.units)+'</td><td>'+sg(r.RF.mo-1)+'</td><td>'+sg(r.RF.cedol-1)+'</td><td>'+sg(r.RF.usd-1)+'</td><td>'+sg(r.RF.tte-1)+'</td><td style="text-align:left">'+tag+'</td></tr>';
     prev=r.total;
   });
   h+='</tbody>';$('obTraj').innerHTML=h;
@@ -828,10 +884,58 @@ function renderOB(){
   $('idxTxt').innerHTML=P.useIdx?('Vs noviembre: MO '+sg(RF.mo-1)+' · CEDOL '+sg(RF.cedol-1)+' · USD '+sg(RF.usd-1)+' · TTE '+sg(RF.tte-1)+(nxt?'<br>Próximo gatillo: '+lbl(nxt.mesAplica)+(nxt.proj?' (estimado)':''):'')):'Índices desactivados: solo rigen los extras.';
 }
 
+/* ---------- Pantalla de Simulación ---------- */
+function esc(x){return String(x==null?'':x).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]})}
+function buildSim(){
+  var h;
+  function inRow(t,key,step){return '<tr><td class="name">'+t+'</td>'+SIM_M.map(function(m,j){return '<td><input type="number" data-sa="'+key+'|'+j+'" step="'+step+'" aria-label="'+t+' '+lbl(m)+'"></td>'}).join('')+'</tr>'}
+  function outRow(t,id,bold){return '<tr'+(bold?' class="tot"':'')+'><td class="name">'+t+'</td>'+SIM_M.map(function(m,j){return '<td data-so="'+id+'|'+j+'"></td>'}).join('')+'</tr>'}
+  function refRow(t,id){return '<tr><td class="name"><span class="muted">'+t+'</span></td>'+SIM_M.map(function(m,j){return '<td class="muted" data-so="'+id+'|'+j+'"></td>'}).join('')+'</tr>'}
+  h='<thead><tr><th>Concepto</th>'+SIM_M.map(function(m){return '<th>'+lbl(m)+'</th>'}).join('')+'</tr></thead><tbody>';
+  h+=inRow('Órdenes del plan (tiendas existentes y nuevas del plan)','base',1000)+inRow('Δ % orgánico sobre el plan','org',0.5)+outRow('Órdenes de tiendas nuevas adicionales (netas de canibalización)','add')+outRow('Total de órdenes','orders',1)+outRow('Órdenes por día','opd')+outRow('Tiendas activas','tiendas')+outRow('Órdenes por tienda','opt')+inRow('Basket size (unidades por orden)','aov',0.01)+outRow('Unidades','units',1)+inRow('Unidades por línea','ul',0.1)+outRow('Líneas','lines',1)+outRow('Líneas por día','lpd')+refRow('Ref.: órdenes si se repite el año pasado','ref_ly')+refRow('Ref.: líneas según Proyección Tareas CD','ref_tl')+refRow('Ref.: unidades por línea que implican esas tareas','ref_ul');
+  $('simTable').innerHTML=h+'</tbody>';
+  // plan por tienda
+  h='<thead><tr><th>Tienda</th>'+SIM_M.slice(0,5).map(function(m){return '<th>'+lbl(m)+'</th>'}).join('')+'<th>oct-26 real</th></tr></thead><tbody>';
+  ST.forEach(function(r){h+='<tr><td>'+esc(r[0])+'</td>'+[1,2,3,4,5,6].map(function(k){return '<td>'+(r[k]?f0(r[k]):'—')+'</td>'}).join('')+'</tr>'});
+  h+='<tr class="tot"><td>Total</td>'+[1,2,3,4,5,6].map(function(k){return '<td>'+f0(stSum(k))+'</td>'}).join('')+'</tr></tbody>';
+  $('stTable').innerHTML=h;
+  buildNs();syncSim();
+}
+function buildNs(){
+  var h='<thead><tr><th>Tienda</th><th>Mes de apertura</th><th>Régimen (órdenes por mes)</th><th>Canibalización %</th><th></th></tr></thead><tbody>';
+  P.sim.ns.forEach(function(n,i){
+    h+='<tr><td><input type="text" class="w" data-ns="'+i+'|n" value="'+esc(n.n)+'" aria-label="Nombre de la tienda"></td><td><select data-ns="'+i+'|open" aria-label="Mes de apertura">'+SIM_M.map(function(m){return '<option value="'+m+'"'+(m===n.open?' selected':'')+'>'+lbl(m)+'</option>'}).join('')+'</select></td><td><input type="number" data-ns="'+i+'|reg" step="500" value="'+n.reg+'" aria-label="Régimen"></td><td><input type="number" class="s" data-ns="'+i+'|canib" step="1" value="'+n.canib+'" aria-label="Canibalización"></td><td><button data-nsdel="'+i+'">Quitar</button></td></tr>';
+  });
+  if(!P.sim.ns.length)h+='<tr><td colspan="5" style="text-align:left">Sin tiendas adicionales.</td></tr>';
+  $('nsTable').innerHTML=h+'</tbody>';
+}
+function syncSim(){
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sa]'),function(i){var a=i.getAttribute('data-sa').split('|');i.value=P.sim[a[0]][+a[1]]});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sg]'),function(i){i.value=P.sim[i.getAttribute('data-sg')]});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-ramp]'),function(i){i.value=P.sim.ramp[+i.getAttribute('data-ramp')]});
+}
+function renderSim(R){
+  var vols=SIM_M.map(function(m){return volFor(P,m)});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-so]'),function(td){
+    var a=td.getAttribute('data-so').split('|'),v=vols[+a[1]],j=+a[1],id=a[0],x;
+    if(id==='add')x=v.add-v.can;else if(id==='orders')x=v.orders;else if(id==='opd')x=v.orders/v.days;else if(id==='tiendas')x=v.tiendas;else if(id==='opt')x=v.orders/v.tiendas;else if(id==='units')x=v.units;else if(id==='lines')x=v.lines;else if(id==='lpd')x=v.lines/v.days;
+    else if(id==='ref_ly')x=SIMD.ly[j];else if(id==='ref_tl')x=SIMD.tl[j];else if(id==='ref_ul')x=SIMD.tl[j]?v.units/SIMD.tl[j]:null;
+    td.textContent=x==null?'—':(id==='ref_ul'?nf1.format(x):f0(x));
+  });
+  var v=R.vol;
+  $('simFlow').innerHTML='<div class="fl"><span>Órdenes de '+lbl(P.month)+'</span><b>'+f0(v.orders)+'</b></div><span class="op">×</span><div class="fl"><span>Basket size</span><b>'+nf2.format(v.aov)+'</b></div><span class="op">=</span><div class="fl"><span>Unidades</span><b>'+f0(v.units)+'</b></div><span class="op">÷</span><div class="fl"><span>Unidades por línea</span><b>'+nf1.format(v.ul)+'</b></div><span class="op">=</span><div class="fl out"><span>Líneas</span><b>'+f0(v.lines)+'</b></div><div class="fl"><span>Tiendas activas</span><b>'+v.tiendas+'</b></div><div class="fl"><span>Órdenes por tienda</span><b>'+f0(v.orders/v.tiendas)+'</b></div>';
+  var labels=['oct-26'].concat(SIM_M.map(lbl));
+  function ser(real,f){return [real].concat(vols.map(f))}
+  var c='';
+  c+=evCard('Órdenes por mes','Oct-26 real y plan con tu escenario.',evChart({title:'Órdenes',labels:labels,split:1,bars:true,fmt:function(v){return f0(v/1000)+' k'},series:[{c:'--accent',vals:ser(SIMD.oct.orders,function(x){return x.orders})}]}));
+  c+=evCard('Unidades por mes','Órdenes por basket size.',evChart({title:'Unidades',labels:labels,split:1,bars:true,fmt:function(v){return nf1.format(v/1e6)+' M'},series:[{c:'--c2',vals:ser(SIMD.oct.units,function(x){return x.units})}]}));
+  c+=evCard('Líneas por mes','Unidades divididas por unidades por línea.',evChart({title:'Líneas',labels:labels,split:1,fmt:function(v){return f0(v/1000)+' k'},series:[{c:'--accent',vals:ser(SIMD.oct.lines,function(x){return x.lines})}]}));
+  $('simCharts').innerHTML=c;
+}
 /* ---------- Eventos ---------- */
-var PF={units:0,days:0,dc:0,dPos:1,dImp:1,wage:1,whInc:1,trInc:1,hheePct:1,fx:0,budget:0,netRev:0};
+var PF={days:0,dc:0,dPos:1,dImp:1,wage:1,whInc:1,trInc:1,hheePct:1,fx:0,budget:0,netRev:0};
 function syncParams(){
-  $('ev_src').value=P.ev.src;$('ev_g').value=P.ev.g;$('ev_pl').value=P.ev.pLin;$('ev_pu').value=P.ev.pUni;$('ev_pc').value=P.ev.pCost;
+  $('ev_pl').value=P.ev.pLin;$('ev_pu').value=P.ev.pUni;$('ev_pc').value=P.ev.pCost;
   $('p_useIdx').checked=P.useIdx;
   $('p_month').innerHTML=OB_SIM.map(function(m){return '<option value="'+m+'"'+(m===P.month?' selected':'')+'>'+lbl(m)+'</option>'}).join('');
   OBF.forEach(function(f){$('infl_'+f).value=P.infl[f]});
@@ -842,16 +946,23 @@ function bind(){
   Object.keys(PF).forEach(function(k){
     $('p_'+k).addEventListener('input',function(e){var v=parseFloat(e.target.value);if(isNaN(v))return;P[k]=PF[k]?v/100:v;render();});
   });
-  $('p_dvol').addEventListener('input',function(e){P.units=Math.round(U0*(1+parseFloat(e.target.value)/100));$('p_units').value=P.units;render();});
   $('p_useIdx').addEventListener('change',function(e){P.useIdx=e.target.checked;render()});
   $('p_month').addEventListener('change',function(e){P.month=e.target.value;render()});
-  $('ev_src').addEventListener('change',function(e){P.ev.src=e.target.value;render()});
+  document.addEventListener('change',function(e){var t=e.target;if(t.tagName==='SELECT'&&t.hasAttribute('data-ns')){var q=t.getAttribute('data-ns').split('|');P.sim.ns[+q[0]][q[1]]=t.value;render()}});
+  document.addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.hasAttribute('data-nsdel')){P.sim.ns.splice(+b.getAttribute('data-nsdel'),1);buildNs();render()}});
+  $('ns_add').addEventListener('click',function(){P.sim.ns.push({n:'Nueva tienda',open:'2027-05',reg:AVG_TIPO,canib:15});buildNs();render()});
   $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
   $('p_prorate').addEventListener('change',function(e){P.prorate=e.target.checked;render()});
   document.addEventListener('input',function(e){
-    var t=e.target;if(t.tagName!=='INPUT'||t.type!=='number')return;
+    var t=e.target;
+    if(t.tagName==='INPUT'&&t.type==='text'&&t.hasAttribute('data-ns')){var q=t.getAttribute('data-ns').split('|');P.sim.ns[+q[0]][q[1]]=t.value;return}
+    if(t.tagName!=='INPUT'||t.type!=='number')return;
     if(t.hasAttribute('data-idx')){var pr=t.getAttribute('data-idx').split('|');P.idxOv[pr[0]]=P.idxOv[pr[0]]||{};if(t.value==='')delete P.idxOv[pr[0]][pr[1]];else P.idxOv[pr[0]][pr[1]]=parseFloat(t.value);render();return}
     var v=parseFloat(t.value);if(isNaN(v))v=0;
+    if(t.hasAttribute('data-sa')){var sa=t.getAttribute('data-sa').split('|');P.sim[sa[0]][+sa[1]]=v;render();return}
+    if(t.hasAttribute('data-sg')){P.sim[t.getAttribute('data-sg')]=v;render();return}
+    if(t.hasAttribute('data-ramp')){P.sim.ramp[+t.getAttribute('data-ramp')]=v;render();return}
+    if(t.hasAttribute('data-ns')){var nq=t.getAttribute('data-ns').split('|');P.sim.ns[+nq[0]][nq[1]]=v;render();return}
     if(t.hasAttribute('data-ev')){P.ev[t.getAttribute('data-ev')]=v;render();return}
     if(t.hasAttribute('data-infl')){P.infl[t.getAttribute('data-infl')]=v;render();return}
     if(t.hasAttribute('data-trip')){TR[+t.getAttribute('data-trip')][+t.getAttribute('data-v')]=v;render();return}
@@ -866,14 +977,14 @@ function bind(){
 function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},2200)}
 function copySummary(){
   var R=compute(P,L,TR,K),B=BASE,rows=[['Proceso','Base Nov (ARS)','Escenario (ARS)','Delta %','% total','ARS/unidad']];
-  PROC.forEach(function(p){rows.push([p.n,Math.round(B.byProc[p.id]),Math.round(R.byProc[p.id]),(delta(R.byProc[p.id],B.byProc[p.id])*100).toFixed(1),(R.byProc[p.id]/R.total*100).toFixed(1),(R.byProc[p.id]/P.units).toFixed(2)]);});
-  rows.push(['Total',Math.round(B.total),Math.round(R.total),(delta(R.total,B.total)*100).toFixed(1),'100',(R.total/P.units).toFixed(2)]);
+  PROC.forEach(function(p){rows.push([p.n,Math.round(B.byProc[p.id]),Math.round(R.byProc[p.id]),(delta(R.byProc[p.id],B.byProc[p.id])*100).toFixed(1),(R.byProc[p.id]/R.total*100).toFixed(1),(R.byProc[p.id]/R.vol.units).toFixed(2)]);});
+  rows.push(['Total',Math.round(B.total),Math.round(R.total),(delta(R.total,B.total)*100).toFixed(1),'100',(R.total/R.vol.units).toFixed(2)]);
   var txt=rows.map(function(r){return r.join('\t')}).join('\n');
   function fallback(){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);toast(ok?'Resumen copiado, pegalo en Sheets':'No se pudo copiar')}
   try{navigator.clipboard.writeText(txt).then(function(){toast('Resumen copiado, pegalo en Sheets')},fallback)}catch(e){fallback()}
 }
 
 buildTabs();buildTables();syncParams();bind();render();
-window.__sim={compute:compute,P0:P0,DEF:DEF,TRIPS:TRIPS,K:K,BASE:BASE,SHEET:SHEET};
+window.__sim={volFor:volFor,compute:compute,P0:P0,DEF:DEF,TRIPS:TRIPS,K:K,BASE:BASE,SHEET:SHEET};
 })();
 </script>
