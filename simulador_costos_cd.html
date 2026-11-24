@@ -7,17 +7,17 @@
    Tokens: neutros fríos + un acento verde-azulado; 12 colores categóricos para los procesos. */
 :root{
   --bg:#f3f5f7; --surface:#ffffff; --surface2:#eef1f4; --ink:#13202b; --muted:#5a6b79; --line:#dbe1e7;
-  --accent:#0b7a75; --accent-ink:#ffffff; --accent-soft:#d9efed;
+  --accent:#0b7a75; --c2:#d2692f; --accent-ink:#ffffff; --accent-soft:#d9efed;
   --good:#1a7f45; --bad:#b4372b; --warn:#9a6a00; --input:#fffdf2; --input-line:#e2d79a;
   --f-head:'Space Grotesk','Inter',system-ui,sans-serif; --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
 }
 @media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
   --bg:#0f161c; --surface:#17212a; --surface2:#1e2a35; --ink:#e6edf3; --muted:#93a5b4; --line:#2b3a47;
-  --accent:#3cc2b9; --accent-ink:#06211f; --accent-soft:#16403e;
+  --accent:#3cc2b9; --c2:#f0935f; --accent-ink:#06211f; --accent-soft:#16403e;
   --good:#52c27f; --bad:#ef7d70; --warn:#e0b04a; --input:#2a2a1c; --input-line:#5a5226; color-scheme:dark;}}
 :root[data-theme="dark"]{
   --bg:#0f161c; --surface:#17212a; --surface2:#1e2a35; --ink:#e6edf3; --muted:#93a5b4; --line:#2b3a47;
-  --accent:#3cc2b9; --accent-ink:#06211f; --accent-soft:#16403e;
+  --accent:#3cc2b9; --c2:#f0935f; --accent-ink:#06211f; --accent-soft:#16403e;
   --good:#52c27f; --bad:#ef7d70; --warn:#e0b04a; --input:#2a2a1c; --input-line:#5a5226; color-scheme:dark;}
 *{box-sizing:border-box}
 body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
@@ -88,6 +88,18 @@ details ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
 details li{margin-bottom:4px}
 .toast{position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:20}
 .toast[hidden]{display:none}
+
+.fgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:10px 0 16px}
+.charts{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:14px;margin:6px 0 20px}
+@media (max-width:480px){.charts{grid-template-columns:minmax(0,1fr)}}
+.cc{border:1px solid var(--line);border-radius:8px;padding:12px 12px 6px;background:var(--surface);min-width:0}
+.cc h3{text-transform:none;letter-spacing:0;font-size:14px;color:var(--ink);margin-bottom:2px}
+.cc .cs{font-size:11px;color:var(--muted);margin:0 0 4px}
+.cc svg{width:100%;height:auto;display:block}
+.cc .lg{display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin:2px 0 4px}
+.cc .lg i{display:inline-block;width:10px;height:3px;margin-right:5px;vertical-align:middle;border-radius:2px}
+td.proj,th.proj{background:var(--surface2)}
+th.proj{color:var(--accent)}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s}}
 </style>
 
@@ -165,6 +177,25 @@ details li{margin-bottom:4px}
           <p class="sub">La columna «Planilla Nov» es la columna N del Resumen. «% total» y «% whse» del modelo se comparan con las columnas BX y BY.</p>
           <div class="scroll"><table id="conceptTable"></table></div>
           <p class="note" id="calibNote"></p>
+        </div>
+
+        <div class="tabpane" data-tab="evolucion" hidden>
+          <h2 style="margin-top:14px">Evolución del CD</h2>
+          <p class="sub">Dic-25 a oct-26 son datos reales de tu solapa «Evolución CD». Desde nov-26 es la proyección del simulador con el escenario del panel: volumen, índices de aumento y extras. Las columnas con fondo gris son proyección.</p>
+          <div class="fgrid">
+            <div class="field"><label for="ev_g">Crecimiento mensual de volumen (%)</label><input type="number" id="ev_g" data-ev="g" step="0.5"></div>
+            <div class="field"><label for="ev_src">Volumen base de nov-26</label><select id="ev_src"><option value="evo">Evolución CD: 3.674.567 u · 259.974 líneas</option><option value="res">Resumen de gastos: 3.432.736 u · 262.484 líneas</option></select></div>
+            <div class="field"><label for="ev_pl">% líneas MFC</label><input type="number" id="ev_pl" data-ev="pLin" step="0.5"></div>
+            <div class="field"><label for="ev_pu">% unidades MFC</label><input type="number" id="ev_pu" data-ev="pUni" step="0.5"></div>
+            <div class="field"><label for="ev_pc">% del costo asignado a MFC</label><input type="number" id="ev_pc" data-ev="pCost" step="0.5"></div>
+          </div>
+          <div class="charts" id="evCharts"></div>
+          <h3>Indicadores por mes</h3>
+          <div class="scroll" style="margin:8px 0 16px"><table id="evTable"></table></div>
+          <h3>Costo por línea movida, por proceso (ARS)</h3>
+          <p class="sub">Muestra qué proceso explica los movimientos del costo por línea. Solo hay apertura por proceso desde nov-26, que es la base del simulador.</p>
+          <div class="scroll" style="margin:8px 0 16px"><table id="evProc"></table></div>
+          <p class="note">Las dos planillas no usan el mismo volumen para noviembre (Resumen: 3,43 M unidades; Evolución CD: 3,67 M, octubre real). Elegí la base arriba. El volumen del escenario escala sobre la base elegida. El % costo sobre ventas proyectado usa el net revenue del panel, escalado con el volumen.</p>
         </div>
 
         <div class="tabpane" data-tab="openbook" hidden>
@@ -368,7 +399,7 @@ var TRIPS=[
 
 /* ---------- Estado ---------- */
 function clone(o){return JSON.parse(JSON.stringify(o))}
-var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
+var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',ev:{g:0,src:'evo',pLin:55.6,pUni:29.8,pCost:42.2},infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
 var P=clone(P0), L=clone(DEF), TR=TRIPS.map(function(){return [0,0]});
 var HC0=0; DEF.forEach(function(l){if(l.t==='rol')HC0+=l.heads}); HC0+=1;
 var K=1;
@@ -491,7 +522,7 @@ K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
 /* ---------- Render: estructura ---------- */
-var TABS=[['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['concepto','Por concepto'],['evolucion','Evolución del CD'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
@@ -619,11 +650,136 @@ function render(){
     h+='<tr'+(dv===0?' class="tot"':'')+'><td>'+(dv>0?'+':'')+dv+'%</td><td>'+f0(pp.units)+'</td><td>'+M(r.total)+'</td><td>'+sg(delta(r.total,ref.total))+'</td><td>'+nf2.format(r.total/pp.units)+'</td><td class="'+dcls(delta(r.total/pp.units,ref.total/P.units))+'">'+sg(delta(r.total/pp.units,ref.total/P.units))+'</td><td>'+M(r.byProc.pik)+'</td><td>'+M(r.byProc.dis)+'</td></tr>';});
   h+='</tbody>';$('tSens').innerHTML=h;
   renderOB();
+  renderEvo();
   var dv=P.units/U0-1;
   $('dvol_txt').textContent=(dv>=0?'+':'')+(dv*100).toFixed(1).replace('.',',')+'% vs noviembre ('+f0(U0)+' unidades)';
   $('p_dvol').value=Math.round(dv*100);
 }
 
+/* ---------- Evolución del CD ---------- */
+var EVH={
+ m:['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'],
+ ars:[706825576,631170121,621276261,695284377,675526440,827302802,976590878,931443357,964738665,991373899,1021080602],
+ usd:[509240,423832,410214,451406,460168,555237,641650,642375,677797,683706,631857],
+ fx:[1388,1489,1515,1540,1468,1490,1522,1450,1423,1450,1616],
+ lines:[137583,119310,103930,139423,146077,175811,239743,257230,246632,253716,259974],
+ units:[2798183,2489165,2390207,3184780,2852443,3276852,3838705,3448357,3237637,3234816,3674567],
+ lMFC:[43105,35340,31439,45034,54326,83123,117474,135380,131554,144872,144607],
+ uMFC:[507311,629759,602810,713072,639803,726150,1276753,1165890,848261,908983,1093528],
+ pCost:[15.0,20.2,25.1,27.0,28.1,29.4,36.2,42.2,42.2,42.2,42.2],
+ pVentas:[6.04,6.91,6.30,5.76,5.76,5.01,6.80,6.83,6.50,7.09,6.28],
+ prod:[31.9,38.7,31.5,38.3,40.7,37.7,36.8,43.7,60.4,60.4,null]};
+var EV_SRC={evo:{units:3674567,lines:259974},res:{units:3432736,lines:262484}};
+var nf3=new Intl.NumberFormat('es-AR',{minimumFractionDigits:3,maximumFractionDigits:3});
+function evBuild(){
+  var out=[],i,g=P.ev.g/100,src=EV_SRC[P.ev.src];
+  for(i=0;i<EVH.m.length;i++){
+    var o={m:EVH.m[i],real:true,ars:EVH.ars[i],usd:EVH.usd[i],fx:EVH.fx[i],lines:EVH.lines[i],units:EVH.units[i],lMFC:EVH.lMFC[i],uMFC:EVH.uMFC[i],pCost:EVH.pCost[i]/100,pVentas:EVH.pVentas[i]/100,prod:EVH.prod[i]};
+    out.push(o);
+  }
+  OB_SIM.forEach(function(m,j){
+    var pp=clone(P);pp.month=m;pp.units=P.units*Math.pow(1+g,j);
+    var r=compute(pp,L,TR,K),vr=pp.units/U0,usd=r.total/P.fx,nr=P.netRev*vr,lines=src.lines*vr,units=src.units*vr;
+    out.push({m:m,real:false,ars:r.total,usd:usd,fx:P.fx,lines:lines,units:units,lMFC:lines*P.ev.pLin/100,uMFC:units*P.ev.pUni/100,pCost:P.ev.pCost/100,pVentas:usd/nr,prod:null,byProc:r.byProc});
+  });
+  out.forEach(function(o,i){
+    o.cLineUsd=o.usd/o.lines;o.cUnitUsd=o.usd/o.units;o.cLineArs=o.ars/o.lines;o.cUnitArs=o.ars/o.units;
+    o.pLinMFC=o.lMFC/o.lines;o.pLinFC=1-o.pLinMFC;
+    o.uMfcArs=o.ars*o.pCost/o.uMFC;o.uFcArs=o.ars*(1-o.pCost)/(o.units-o.uMFC);
+    o.vLine=i?o.cLineUsd/out[i-1].cLineUsd-1:null;o.vUnit=i?o.cUnitUsd/out[i-1].cUnitUsd-1:null;
+  });
+  return out;
+}
+function evChart(o){
+  var W=640,H=o.h||220,pl=54,pr=14,pt=22,pb=28,n=o.labels.length,split=o.split,i,all=[];
+  o.series.forEach(function(s){s.vals.forEach(function(v){if(v!=null)all.push(v)})});
+  if(o.ref!=null)all.push(o.ref);
+  var mx=Math.max.apply(null,all),mn=o.bars?0:Math.min.apply(null,all),pad=(mx-mn)*0.14||1;
+  mx+=pad;if(!o.bars)mn=Math.max(0,mn-pad);
+  var step=(W-pl-pr)/n,X=function(i){return pl+step*i+step/2},Y=function(v){return pt+(H-pt-pb)*(1-(v-mn)/(mx-mn))};
+  var g='',t;
+  for(t=0;t<=3;t++){var v=mn+(mx-mn)*t/3;g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" style="stroke:var(--line)"/><text x="'+(pl-6)+'" y="'+(Y(v)+3.5)+'" text-anchor="end" font-size="10" style="fill:var(--muted)">'+o.fmt(v)+'</text>';}
+  if(split<n){g+='<rect x="'+(pl+step*split)+'" y="'+pt+'" width="'+(step*(n-split))+'" height="'+(H-pt-pb)+'" style="fill:var(--surface2)"/><text x="'+(pl+step*split+4)+'" y="'+(pt+11)+'" font-size="10" style="fill:var(--accent)">Proyección</text>';}
+  for(i=0;i<n;i++){if(i%2===0||i===n-1)g+='<text x="'+X(i)+'" y="'+(H-pb+15)+'" text-anchor="middle" font-size="9.5" style="fill:var(--muted)">'+o.labels[i]+'</text>';}
+  if(o.ref!=null){g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(o.ref)+'" y2="'+Y(o.ref)+'" stroke-dasharray="4 4" style="stroke:var(--muted)"/><text x="'+(W-pr)+'" y="'+(Y(o.ref)-4)+'" text-anchor="end" font-size="10" style="fill:var(--muted)">'+o.refLbl+'</text>';}
+  o.series.forEach(function(s){
+    var col='var('+s.c+')',pts=[],seg='',k;
+    if(o.bars){
+      var bw=step*0.62;
+      s.vals.forEach(function(v,i){if(v==null)return;g+='<rect x="'+(X(i)-bw/2)+'" y="'+Y(v)+'" width="'+bw+'" height="'+Math.max(0,Y(mn)-Y(v))+'" rx="2" style="fill:'+col+';opacity:'+(i<split?1:.5)+'"><title>'+o.labels[i]+': '+o.fmt(v)+'</title></rect>';});
+    }else{
+      var real=[],proj=[];
+      s.vals.forEach(function(v,i){if(v==null)return;if(i<split)real.push([X(i),Y(v)]);if(i>=split-1)proj.push([X(i),Y(v)]);});
+      if(real.length>1)g+='<polyline points="'+real.join(' ')+'" fill="none" stroke-width="2.2" style="stroke:'+col+'"/>';
+      if(proj.length>1)g+='<polyline points="'+proj.join(' ')+'" fill="none" stroke-width="2.2" stroke-dasharray="5 4" style="stroke:'+col+'"/>';
+      s.vals.forEach(function(v,i){if(v==null)return;g+='<circle cx="'+X(i)+'" cy="'+Y(v)+'" r="2.8" style="fill:'+col+'"><title>'+o.labels[i]+': '+o.fmt(v)+'</title></circle>';});
+    }
+    if(!s.noLbl)[0,split-1,n-1].forEach(function(i,ix,arr){if(arr.indexOf(i)!==ix||s.vals[i]==null)return;g+='<text x="'+X(i)+'" y="'+(Y(s.vals[i])-7)+'" text-anchor="middle" font-size="10" font-weight="600" style="fill:var(--ink)">'+o.fmt(s.vals[i])+'</text>';});
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="'+o.title+'">'+g+'</svg>';
+}
+function evCard(title,sub,svg,legend){
+  var lg='';if(legend)lg='<div class="lg">'+legend.map(function(x){return '<span><i style="background:var('+x[1]+')"></i>'+x[0]+'</span>'}).join('')+'</div>';
+  return '<div class="cc"><h3>'+title+'</h3><p class="cs">'+sub+'</p>'+lg+svg+'</div>';
+}
+function evStack(E){
+  var proj=E.filter(function(o){return !o.real}),W=640,H=240,pl=54,pr=14,pt=14,pb=28,n=proj.length,mx=0,g='',i,t;
+  proj.forEach(function(o){mx=Math.max(mx,o.ars)});mx*=1.08;
+  var step=(W-pl-pr)/n,bw=step*0.6,Y=function(v){return pt+(H-pt-pb)*(1-v/mx)};
+  for(t=0;t<=3;t++){var v=mx*t/3;g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" style="stroke:var(--line)"/><text x="'+(pl-6)+'" y="'+(Y(v)+3.5)+'" text-anchor="end" font-size="10" style="fill:var(--muted)">'+f0(v/1e6)+' M</text>';}
+  proj.forEach(function(o,i){var acc=0,x=pl+step*i+(step-bw)/2;
+    PROC.forEach(function(p){var v=o.byProc[p.id];if(v<=0)return;g+='<rect x="'+x+'" y="'+Y(acc+v)+'" width="'+bw+'" height="'+Math.max(0,Y(acc)-Y(acc+v))+'" style="fill:'+p.c+'"><title>'+lbl(o.m)+' · '+p.n+': '+M(v)+' M</title></rect>';acc+=v;});
+    g+='<text x="'+(x+bw/2)+'" y="'+(H-pb+15)+'" text-anchor="middle" font-size="9.5" style="fill:var(--muted)">'+lbl(o.m)+'</text>';
+  });
+  return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Costo por proceso, proyección">'+g+'</svg>';
+}
+function renderEvo(){
+  var E=evBuild(),labels=E.map(function(o){return lbl(o.m)}),split=EVH.m.length;
+  var col=function(f){return E.map(f)};
+  var c='';
+  c+=evCard('Costo por línea movida (USD)','Gasto en USD dividido por líneas (SKU-tienda).',evChart({title:'Costo por línea',labels:labels,split:split,fmt:function(v){return nf2.format(v)},series:[{c:'--accent',vals:col(function(o){return o.cLineUsd})}]}));
+  c+=evCard('Costo por unidad movida (USD)','Gasto en USD dividido por unidades.',evChart({title:'Costo por unidad',labels:labels,split:split,fmt:function(v){return nf3.format(v)},series:[{c:'--accent',vals:col(function(o){return o.cUnitUsd})}]}));
+  c+=evCard('Gasto total (USD)','Real y proyección del simulador.',evChart({title:'Gasto total USD',labels:labels,split:split,bars:true,fmt:function(v){return f0(v/1000)+' k'},series:[{c:'--accent',vals:col(function(o){return o.usd}),noLbl:false}]}));
+  c+=evCard('Líneas movidas (miles)','Volumen en líneas SKU-tienda.',evChart({title:'Líneas movidas',labels:labels,split:split,fmt:function(v){return nf0.format(v/1000)+' k'},series:[{c:'--accent',vals:col(function(o){return o.lines})}]}));
+  c+=evCard('Costo logístico sobre ventas','Plan del año: 6,5 %.',evChart({title:'% costo sobre ventas',labels:labels,split:split,ref:0.065,refLbl:'Plan 6,5%',fmt:function(v){return (v*100).toFixed(1).replace('.',',')+'%'},series:[{c:'--c2',vals:col(function(o){return o.pVentas})}]}));
+  c+=evCard('Mix de picking: MFC vs Fullcase','Porcentaje de líneas por modalidad.',evChart({title:'Mix MFC vs Fullcase',labels:labels,split:split,fmt:function(v){return Math.round(v*100)+'%'},series:[{c:'--accent',vals:col(function(o){return o.pLinMFC})},{c:'--c2',vals:col(function(o){return o.pLinFC})}]}),[['% líneas MFC','--accent'],['% líneas Fullcase','--c2']]);
+  c+=evCard('Costo de mover 1 unidad (ARS)','Reparto del gasto según el % asignado a MFC.',evChart({title:'Costo de mover una unidad',labels:labels,split:split,fmt:function(v){return f0(v)},series:[{c:'--accent',vals:col(function(o){return o.uMfcArs})},{c:'--c2',vals:col(function(o){return o.uFcArs})}]}),[['MFC','--accent'],['Fullcase','--c2']]);
+  var lg=PROC.filter(function(p){return !(P.prorate&&!p.r&&p.id!=='dis')}).map(function(p){return '<span><i style="background:'+p.c+'"></i>'+p.n+'</span>'}).join('');
+  c+='<div class="cc"><h3>Costo por proceso (proyección)</h3><p class="cs">ARS en millones, apilado por proceso.</p><div class="lg">'+lg+'</div>'+evStack(E)+'</div>';
+  $('evCharts').innerHTML=c;
+  // tabla
+  var rows=[
+   ['Gasto total (ARS M)',function(o){return M(o.ars)}],
+   ['Gasto total (USD)',function(o){return f0(o.usd)}],
+   ['Tipo de cambio',function(o){return f0(o.fx)}],
+   ['Líneas movidas',function(o){return f0(o.lines)}],
+   ['Unidades movidas',function(o){return f0(o.units)}],
+   ['Unidades por línea',function(o){return nf1.format(o.units/o.lines)}],
+   ['Costo por línea (USD)',function(o){return nf2.format(o.cLineUsd)},1],
+   ['Costo por línea (ARS)',function(o){return f0(o.cLineArs)},1],
+   ['Costo por unidad (USD)',function(o){return nf3.format(o.cUnitUsd)},1],
+   ['Costo por unidad (ARS)',function(o){return nf2.format(o.cUnitArs)},1],
+   ['Var. mensual costo por línea',function(o){return o.vLine==null?'—':sg(o.vLine)},0,function(o){return o.vLine==null?'':dcls(o.vLine)}],
+   ['Var. mensual costo por unidad',function(o){return o.vUnit==null?'—':sg(o.vUnit)},0,function(o){return o.vUnit==null?'':dcls(o.vUnit)}],
+   ['% líneas MFC',function(o){return pc(o.pLinMFC)}],
+   ['Costo de mover 1 unidad MFC (ARS)',function(o){return f0(o.uMfcArs)}],
+   ['Costo de mover 1 unidad Fullcase (ARS)',function(o){return f0(o.uFcArs)}],
+   ['% costo logístico / ventas',function(o){return pc(o.pVentas,2)}],
+   ['Productividad picking (líneas/h)',function(o){return o.prod==null?'—':nf1.format(o.prod)}]];
+  var h='<thead><tr><th>Indicador</th>'+E.map(function(o){return '<th'+(o.real?'':' class="proj"')+'>'+lbl(o.m)+'</th>'}).join('')+'</tr></thead><tbody>';
+  rows.forEach(function(r){h+='<tr><td'+(r[2]?' style="font-weight:600"':'')+'>'+r[0]+'</td>'+E.map(function(o){return '<td class="'+(o.real?'':'proj ')+(r[3]?r[3](o):'')+'">'+r[1](o)+'</td>'}).join('')+'</tr>'});
+  $('evTable').innerHTML=h+'</tbody>';
+  // por proceso
+  var proj=E.filter(function(o){return !o.real});
+  h='<thead><tr><th>Proceso</th>'+proj.map(function(o){return '<th class="proj">'+lbl(o.m)+'</th>'}).join('')+'<th>Δ jun-27 vs nov-26</th></tr></thead><tbody>';
+  PROC.forEach(function(p){
+    if(P.prorate&&!p.r&&p.id!=='dis')return;
+    var vals=proj.map(function(o){return o.byProc[p.id]/o.lines});
+    h+='<tr><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td>'+vals.map(function(v){return '<td class="proj">'+f0(v)+'</td>'}).join('')+'<td class="'+dcls(delta(vals[vals.length-1],vals[0]))+'">'+sg(delta(vals[vals.length-1],vals[0]))+'</td></tr>';
+  });
+  h+='<tr class="tot"><td>Total por línea</td>'+proj.map(function(o){return '<td>'+f0(o.cLineArs)+'</td>'}).join('')+'<td class="'+dcls(delta(proj[proj.length-1].cLineArs,proj[0].cLineArs))+'">'+sg(delta(proj[proj.length-1].cLineArs,proj[0].cLineArs))+'</td></tr></tbody>';
+  $('evProc').innerHTML=h;
+}
 function stateOf(acc,u){return acc>=u?'<span class="pill" style="background:var(--bad);color:#fff">Dispara</span>':(acc>=u*0.6?'<span class="pill" style="color:var(--warn)">Atención</span>':'<span class="pill">Tranquilo</span>')}
 function renderOB(){
   var Fx=obFactors(P),ind=Fx.ind,RF=relFactors(P),u=OB_CFG.umbral/100,h;
@@ -669,6 +825,7 @@ function renderOB(){
 /* ---------- Eventos ---------- */
 var PF={units:0,days:0,dc:0,dPos:1,dImp:1,wage:1,whInc:1,trInc:1,hheePct:1,fx:0,budget:0,netRev:0};
 function syncParams(){
+  $('ev_src').value=P.ev.src;$('ev_g').value=P.ev.g;$('ev_pl').value=P.ev.pLin;$('ev_pu').value=P.ev.pUni;$('ev_pc').value=P.ev.pCost;
   $('p_useIdx').checked=P.useIdx;
   $('p_month').innerHTML=OB_SIM.map(function(m){return '<option value="'+m+'"'+(m===P.month?' selected':'')+'>'+lbl(m)+'</option>'}).join('');
   OBF.forEach(function(f){$('infl_'+f).value=P.infl[f]});
@@ -682,12 +839,14 @@ function bind(){
   $('p_dvol').addEventListener('input',function(e){P.units=Math.round(U0*(1+parseFloat(e.target.value)/100));$('p_units').value=P.units;render();});
   $('p_useIdx').addEventListener('change',function(e){P.useIdx=e.target.checked;render()});
   $('p_month').addEventListener('change',function(e){P.month=e.target.value;render()});
+  $('ev_src').addEventListener('change',function(e){P.ev.src=e.target.value;render()});
   $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
   $('p_prorate').addEventListener('change',function(e){P.prorate=e.target.checked;render()});
   document.addEventListener('input',function(e){
     var t=e.target;if(t.tagName!=='INPUT'||t.type!=='number')return;
     if(t.hasAttribute('data-idx')){var pr=t.getAttribute('data-idx').split('|');P.idxOv[pr[0]]=P.idxOv[pr[0]]||{};if(t.value==='')delete P.idxOv[pr[0]][pr[1]];else P.idxOv[pr[0]][pr[1]]=parseFloat(t.value);render();return}
     var v=parseFloat(t.value);if(isNaN(v))v=0;
+    if(t.hasAttribute('data-ev')){P.ev[t.getAttribute('data-ev')]=v;render();return}
     if(t.hasAttribute('data-infl')){P.infl[t.getAttribute('data-infl')]=v;render();return}
     if(t.hasAttribute('data-trip')){TR[+t.getAttribute('data-trip')][+t.getAttribute('data-v')]=v;render();return}
     var id=t.getAttribute('data-id');if(!id)return;var l=lineById(id);
