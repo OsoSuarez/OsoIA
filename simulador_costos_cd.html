@@ -1,0 +1,568 @@
+<title>Simulador de Costos CD</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: panel de supuestos fijo a la izquierda, resultados por proceso a la derecha.
+   Tokens: neutros fríos + un acento verde-azulado; 12 colores categóricos para los procesos. */
+:root{
+  --bg:#f3f5f7; --surface:#ffffff; --surface2:#eef1f4; --ink:#13202b; --muted:#5a6b79; --line:#dbe1e7;
+  --accent:#0b7a75; --accent-ink:#ffffff; --accent-soft:#d9efed;
+  --good:#1a7f45; --bad:#b4372b; --warn:#9a6a00; --input:#fffdf2; --input-line:#e2d79a;
+  --f-head:'Space Grotesk','Inter',system-ui,sans-serif; --f-body:'Inter',system-ui,-apple-system,'Segoe UI',sans-serif;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0f161c; --surface:#17212a; --surface2:#1e2a35; --ink:#e6edf3; --muted:#93a5b4; --line:#2b3a47;
+  --accent:#3cc2b9; --accent-ink:#06211f; --accent-soft:#16403e;
+  --good:#52c27f; --bad:#ef7d70; --warn:#e0b04a; --input:#2a2a1c; --input-line:#5a5226; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#0f161c; --surface:#17212a; --surface2:#1e2a35; --ink:#e6edf3; --muted:#93a5b4; --line:#2b3a47;
+  --accent:#3cc2b9; --accent-ink:#06211f; --accent-soft:#16403e;
+  --good:#52c27f; --bad:#ef7d70; --warn:#e0b04a; --input:#2a2a1c; --input-line:#5a5226; color-scheme:dark;}
+*{box-sizing:border-box}
+body{background:var(--bg);color:var(--ink);font-family:var(--f-body);font-size:14px;line-height:1.45;
+  padding-block:20px 48px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--f-head);margin:0;text-wrap:balance}
+h1{font-size:24px;font-weight:700;letter-spacing:-.01em}
+h2{font-size:16px;font-weight:600}
+h3{font-size:13px;font-weight:600;text-transform:uppercase;letter-spacing:.06em;color:var(--muted)}
+.wrap{max-width:1500px;margin:0 auto}
+header.top{display:flex;flex-wrap:wrap;gap:6px 24px;align-items:baseline;justify-content:space-between;margin-bottom:16px}
+header.top p{margin:0;color:var(--muted);max-width:70ch}
+.layout{display:grid;grid-template-columns:300px minmax(0,1fr);gap:20px;align-items:start}
+@media (max-width:980px){.layout{grid-template-columns:minmax(0,1fr)}}
+aside.panel{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;position:sticky;top:12px;max-height:calc(100vh - 24px);overflow:auto}
+@media (max-width:980px){aside.panel{position:static;max-height:none}}
+.field{display:grid;gap:4px;margin-bottom:12px}
+.field label{font-size:12px;color:var(--muted);font-weight:500}
+.field .hint{font-size:11px;color:var(--muted)}
+.grp{margin:16px 0 8px;padding-top:12px;border-top:1px solid var(--line)}
+.grp:first-of-type{border-top:0;margin-top:0;padding-top:0}
+input[type=number],input[type=text]{width:100%;font:inherit;font-variant-numeric:tabular-nums;padding:6px 8px;border-radius:6px;border:1px solid var(--input-line);background:var(--input);color:var(--ink)}
+input[type=number]:focus,button:focus-visible,input[type=range]:focus-visible,summary:focus-visible{outline:2px solid var(--accent);outline-offset:1px}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.chk{display:flex;gap:8px;align-items:flex-start;font-size:13px;margin-bottom:8px}
+.chk input{margin-top:3px;accent-color:var(--accent)}
+button{font:inherit;border-radius:6px;border:1px solid var(--line);background:var(--surface2);color:var(--ink);padding:6px 12px;cursor:pointer;font-weight:500}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+button:hover{filter:brightness(.97)}
+.btns{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
+main{min-width:0;display:grid;gap:16px}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:12px}
+.kpi{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:12px 14px;min-width:0}
+.kpi .l{font-size:12px;color:var(--muted)}
+.kpi .v{font-family:var(--f-head);font-size:24px;font-weight:600;font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+.kpi .d{font-size:12px;font-variant-numeric:tabular-nums;color:var(--muted)}
+.up{color:var(--bad)} .down{color:var(--good)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
+.card>h2{margin-bottom:4px}
+.card .sub{color:var(--muted);font-size:12px;margin:0 0 12px;max-width:90ch}
+.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
+.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
+.tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
+.tabpane[hidden]{display:none}
+.scroll{overflow-x:auto;max-width:100%}
+table{border-collapse:collapse;width:100%;font-variant-numeric:tabular-nums}
+th,td{padding:6px 8px;text-align:right;border-bottom:1px solid var(--line);white-space:nowrap}
+th{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted);font-weight:600;position:sticky;top:0;background:var(--surface)}
+th:first-child,td:first-child{text-align:left}
+td.name{white-space:normal;min-width:180px}
+tr.tot td{font-weight:600;border-top:2px solid var(--line);background:var(--surface2)}
+td input{width:92px;padding:4px 6px;text-align:right}
+td input.s{width:64px}
+.dot{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:8px;vertical-align:-1px}
+.bar{position:relative;height:16px;min-width:160px;background:var(--surface2);border-radius:4px;overflow:hidden}
+.bar i{position:absolute;left:0;top:0;bottom:0;border-radius:4px}
+.bar i.b{background:var(--line)}
+.bar i.s{height:8px;top:4px}
+.stack{display:flex;height:34px;border-radius:6px;overflow:hidden;margin:4px 0 10px}
+.stack div{min-width:2px;display:grid;place-items:center;font-size:11px;color:#fff;font-weight:600;overflow:hidden;white-space:nowrap}
+.legend{display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--muted)}
+.pill{display:inline-block;padding:1px 8px;border-radius:99px;font-size:11px;background:var(--surface2);color:var(--muted)}
+.note{font-size:12px;color:var(--muted);margin:8px 0 0}
+.warn{color:var(--warn)}
+details{border-top:1px solid var(--line);padding-top:10px;margin-top:10px}
+summary{cursor:pointer;font-weight:600}
+details ul{margin:8px 0 0;padding-left:18px;color:var(--muted)}
+details li{margin-bottom:4px}
+.toast{position:fixed;bottom:max(16px,env(safe-area-inset-bottom,0px));left:50%;transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 14px;border-radius:8px;font-size:13px;z-index:20}
+.toast[hidden]{display:none}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s}}
+</style>
+
+<div class="wrap">
+  <header class="top">
+    <div>
+      <h1>Simulador de costos del CD</h1>
+      <p>Apertura por proceso, calibrada con noviembre 2026: Resumen de gastos (col. N, BX y BY) y Control financiero BAU. Las celdas amarillas se pueden editar.</p>
+    </div>
+    <span class="pill" id="basepill"></span>
+  </header>
+
+  <div class="layout">
+    <aside class="panel" aria-label="Supuestos del escenario">
+      <h2 style="margin-bottom:10px">Escenario</h2>
+
+      <div class="grp"><h3>Volumen</h3></div>
+      <div class="field">
+        <label for="p_units">Unidades pickeadas por mes</label>
+        <input type="number" id="p_units" step="10000" min="0">
+        <input type="range" id="p_dvol" min="-50" max="80" step="1" aria-label="Variación de volumen en porcentaje">
+        <span class="hint" id="dvol_txt"></span>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="p_days">Días operativos</label><input type="number" id="p_days" min="1" max="31" step="1"></div>
+        <div class="field"><label for="p_dc">Días del mes</label><input type="number" id="p_dc" min="28" max="31" step="1"></div>
+      </div>
+      <div class="row2">
+        <div class="field"><label for="p_dPos">Δ posiciones ocupadas %</label><input type="number" id="p_dPos" step="1"></div>
+        <div class="field"><label for="p_dImp">Δ importaciones (Aduana) %</label><input type="number" id="p_dImp" step="1"></div>
+      </div>
+
+      <div class="grp"><h3>Aumentos</h3></div>
+      <div class="row2">
+        <div class="field"><label for="p_wage">Salarial %</label><input type="number" id="p_wage" step="0.5"></div>
+        <div class="field"><label for="p_whInc">Warehouse % (Cedol)</label><input type="number" id="p_whInc" step="0.5"></div>
+      </div>
+      <div class="field"><label for="p_trInc">Transporte %</label><input type="number" id="p_trInc" step="0.5"></div>
+      <div class="field"><label for="p_hheePct">HHEE y adicionales, % sobre personal</label><input type="number" id="p_hheePct" step="0.5"><span class="hint">Nov: 79,9 M sobre 372,4 M</span></div>
+
+      <div class="grp"><h3>Moneda y referencia</h3></div>
+      <div class="row2">
+        <div class="field"><label for="p_fx">TC ARS/USD</label><input type="number" id="p_fx" step="1"></div>
+        <div class="field"><label for="p_budget">Budget USD</label><input type="number" id="p_budget" step="1000"></div>
+      </div>
+      <div class="field"><label for="p_netRev">Net revenue USD (trend)</label><input type="number" id="p_netRev" step="10000"></div>
+
+      <div class="grp"><h3>Opciones</h3></div>
+      <label class="chk"><input type="checkbox" id="p_round"><span>Redondear dotación hacia arriba (personas enteras)</span></label>
+      <label class="chk"><input type="checkbox" id="p_prorate"><span>Prorratear Tecnología, Administración y Soporte sobre los procesos operativos</span></label>
+      <div class="btns">
+        <button class="primary" id="b_copy">Copiar resumen</button>
+        <button id="b_reset">Restablecer</button>
+      </div>
+    </aside>
+
+    <main>
+      <section class="kpis" id="kpis" aria-live="polite"></section>
+
+      <section class="card">
+        <h2>Costo por proceso</h2>
+        <p class="sub">Barra gris: noviembre 2026 (base). Barra de color: escenario. Cada línea de costo se reparte a los procesos según la matriz de la solapa «Asignación».</p>
+        <div class="stack" id="stack" role="img" aria-label="Composición del costo por proceso"></div>
+        <div class="legend" id="legend"></div>
+        <div class="scroll" style="margin-top:12px"><table id="procTable"></table></div>
+      </section>
+
+      <section class="card">
+        <div class="tabs" role="tablist" id="tabs"></div>
+
+        <div class="tabpane" data-tab="concepto">
+          <h2 style="margin-top:14px">Por concepto, igual que el Resumen de gastos</h2>
+          <p class="sub">La columna «Planilla Nov» es la columna N del Resumen. «% total» y «% whse» del modelo se comparan con las columnas BX y BY.</p>
+          <div class="scroll"><table id="conceptTable"></table></div>
+          <p class="note" id="calibNote"></p>
+        </div>
+
+        <div class="tabpane" data-tab="personal" hidden>
+          <h2 style="margin-top:14px">Personal por rol</h2>
+          <p class="sub">Dotación promedio de noviembre (Control financiero BAU, días operativos) y costo por día. La dotación del escenario = base × (1 + elasticidad × Δ volumen) ÷ (1 + productividad).</p>
+          <div class="scroll"><table id="tPersonal"></table></div>
+        </div>
+
+        <div class="tabpane" data-tab="equipos" hidden>
+          <h2 style="margin-top:14px">Maquinaria y almacenamiento</h2>
+          <p class="sub">Se cobra por día calendario. Maquinaria: costo mensual por equipo. Posiciones: tarifa por posición por día.</p>
+          <div class="scroll"><table id="tMaq"></table></div>
+          <div class="scroll" style="margin-top:16px"><table id="tAlm"></table></div>
+        </div>
+
+        <div class="tabpane" data-tab="otros" hidden>
+          <h2 style="margin-top:14px">Transporte, aduana, tecnología y otros</h2>
+          <p class="sub">Monto base de noviembre (Resumen, desglose por razón social y Control financiero). La elasticidad indica qué parte del costo se mueve con el volumen: 0 es fijo, 1 es totalmente variable.</p>
+          <div class="scroll"><table id="tOtros"></table></div>
+          <h3 style="margin-top:20px">Viajes adicionales de distribución (tarifario noviembre)</h3>
+          <p class="sub">Cargá viajes extra por mes para ver su efecto. Se suman a Distribución.</p>
+          <div class="scroll"><table id="tTrips"></table></div>
+        </div>
+
+        <div class="tabpane" data-tab="asig" hidden>
+          <h2 style="margin-top:14px">Asignación de cada línea a los procesos (%)</h2>
+          <p class="sub">Supuesto inicial mío, para que lo ajustes: por ejemplo, los maquinistas se reparten entre Guardado y Reabastecimiento. Si una fila no suma 100, se normaliza.</p>
+          <div class="scroll"><table id="tAsig"></table></div>
+        </div>
+
+        <div class="tabpane" data-tab="sens" hidden>
+          <h2 style="margin-top:14px">Sensibilidad al volumen</h2>
+          <p class="sub">Mismo escenario, cambiando solo las unidades pickeadas. Muestra cuánto del costo es fijo: si el costo por unidad baja al subir el volumen, hay palanca operativa.</p>
+          <div class="scroll"><table id="tSens"></table></div>
+        </div>
+      </section>
+
+      <section class="card">
+        <details open>
+          <summary>Cómo está armado y qué supuestos usé</summary>
+          <ul>
+            <li>Costo total, personal, maquinaria y almacenamiento de noviembre se reproducen con la planilla (ver «Por concepto», columna Dif.).</li>
+            <li>Personal: el Control financiero suma 385,8 M con la dotación diaria, el Resumen muestra 372,4 M. Calibré al Resumen con un factor (se informa abajo del cuadro por concepto).</li>
+            <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
+            <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
+            <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
+            <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
+          </ul>
+        </details>
+      </section>
+    </main>
+  </div>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(function(){
+'use strict';
+/* ---------- Formatos ---------- */
+var nf0=new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
+var nf1=new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
+var nf2=new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function f0(v){return nf0.format(v)}
+function M(v){return nf1.format(v/1e6)}
+function pc(v,d){d=d==null?1:d;return (v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
+function sg(v,d){d=d==null?1:d;var s=(v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});return (v>0?'+':'')+s+'%'}
+function $(id){return document.getElementById(id)}
+
+/* ---------- Procesos ---------- */
+var PROC=[
+ {id:'rec',n:'Recepción',c:'#3b82c4',op:1,r:1},
+ {id:'gua',n:'Guardado',c:'#5b6fd6',op:1,r:1},
+ {id:'alm',n:'Almacenamiento',c:'#8a6fd0',op:1,r:1},
+ {id:'inv',n:'Inventario',c:'#c0649f',op:1,r:1},
+ {id:'rea',n:'Reabastecimiento',c:'#d9774a',op:1,r:1},
+ {id:'pik',n:'Picking',c:'#d39a1f',op:1,r:1},
+ {id:'des',n:'Despacho',c:'#7fa83a',op:1,r:1},
+ {id:'dis',n:'Distribución',c:'#2e9e7b',op:1,r:0},
+ {id:'adu',n:'Aduana',c:'#3aa6b8',op:1,r:1},
+ {id:'tec',n:'Tecnología',c:'#8794a1',op:0,r:0},
+ {id:'adm',n:'Administración',c:'#a6878a',op:0,r:0},
+ {id:'sop',n:'Soporte y gastos generales',c:'#b3a06a',op:0,r:0}
+];
+var PI={};PROC.forEach(function(p){PI[p.id]=p});
+
+/* ---------- Datos base: noviembre 2026 ---------- */
+var U0=3432736, LPU=262484/3432736;
+var SHEET={ // Resumen de gastos 2026: col N (ARS), BX (% total), BY (% whse)
+ 'Personal':[372404481,.3402,.4639],'HHEE':[79904765,.0730,.0995],'Maquinarias':[42446614,.0388,.0529],
+ 'Almacenamiento':[103048355,.0941,.1284],'Inversiones':[15956394,.0146,.0199],'Gastos operativos':[90549036,.0827,.1128],
+ 'Aduana':[37795884,.0345,.0471],'Outsourcing':[15148747,.0138,.0189],'Planexware':[3853686,.0035,.0048],
+ 'Copernico':[8845000,.0081,.0110],'Dispatchtrack':[2744000,.0025,.0034],'Insumos & Seguros':[30000000,.0274,.0374],
+ 'Distribución':[291946502,.2667,null]};
+var SHEET_TOTAL=1094643463, PERSONAL_SHEET=372404481;
+var GROUPS=['Personal','HHEE','Maquinarias','Almacenamiento','Inversiones','Gastos operativos','Aduana','Outsourcing','Planexware','Copernico','Dispatchtrack','Insumos & Seguros','Distribución'];
+
+function A(o){return o}
+var DEF=[];
+function add(o){DEF.push(o)}
+// Personal (dotación promedio Nov sobre 25 días operativos; costo por día por HC)
+add({id:'mgmt',t:'mgmt',g:'Personal',n:'Management',monthly:28842439,alloc:A({adm:1})});
+add({id:'r_adm',t:'rol',g:'Personal',n:'Administrativos',heads:5.00,daily:215546,e:0,prod:0,alloc:A({adm:1})});
+add({id:'r_inv',t:'rol',g:'Personal',n:'Equipo de inventarios',heads:5.32,daily:223836,e:.2,prod:0,alloc:A({inv:1})});
+add({id:'r_maq',t:'rol',g:'Personal',n:'Maquinistas',heads:8.48,daily:228941,e:.8,prod:0,alloc:A({gua:.55,rea:.45})});
+add({id:'r_rea',t:'rol',g:'Personal',n:'Reabastecedores',heads:7.84,daily:207412,e:.8,prod:0,alloc:A({rea:1})});
+add({id:'r_ctr',t:'rol',g:'Personal',n:'Controladores de recepción',heads:4.64,daily:209387,e:.9,prod:0,alloc:A({rec:1})});
+add({id:'r_sep',t:'rol',g:'Personal',n:'Separadores (descarga + reacondicionamiento)',heads:4.64,daily:207412,e:.9,prod:0,alloc:A({rec:1})});
+add({id:'r_pik',t:'rol',g:'Personal',n:'Pickers (secos + congelados)',heads:31.12,daily:199434,e:1,prod:0,alloc:A({pik:1})});
+add({id:'r_des',t:'rol',g:'Personal',n:'Despacho',heads:1.52,daily:199434,e:.5,prod:0,alloc:A({des:1})});
+add({id:'hhee',t:'hhee',g:'HHEE',n:'Horas extra, nocturnas, sábado y adicional fuera de convenio',alloc:{}});
+// Maquinaria (costo mensual por equipo)
+add({id:'m_rch',t:'maq',g:'Maquinarias',n:'Reach',qty:4,unit:4982518,e:.8,alloc:A({gua:.5,rea:.5})});
+add({id:'m_op',t:'maq',g:'Maquinarias',n:'Order picker (picking)',qty:10,unit:1716194,e:1,alloc:A({pik:1})});
+add({id:'m_tp',t:'maq',g:'Maquinarias',n:'Transpaleta (recepción / picking)',qty:3,unit:1555813,e:.5,alloc:A({rec:.5,pik:.5})});
+add({id:'m_zm',t:'maq',g:'Maquinarias',n:'Zorra manual (recepción / picking)',qty:20,unit:15617,e:1,alloc:A({rec:.5,pik:.5})});
+add({id:'m_cr',t:'maq',g:'Maquinarias',n:'Carro de recepción',qty:4,unit:93704,e:.5,alloc:A({rec:1})});
+add({id:'m_ae',t:'maq',g:'Maquinarias',n:'Autoelevador',qty:0,unit:4500485,e:0,alloc:A({rec:.5,gua:.5})});
+// Almacenamiento (posiciones; $/posición/día)
+add({id:'a_ss',t:'alm',g:'Almacenamiento',n:'Reserva secos',qty:3480,rate:660.402,alloc:A({alm:1})});
+add({id:'a_sc',t:'alm',g:'Almacenamiento',n:'Reserva congelados',qty:100,rate:1323.18,alloc:A({alm:1})});
+add({id:'a_sr',t:'alm',g:'Almacenamiento',n:'Reserva refrigerados',qty:60,rate:1323.18,alloc:A({alm:1})});
+add({id:'a_ad',t:'alm',g:'Almacenamiento',n:'Posiciones en Aduana (secos)',qty:60,rate:660.402,adu:1,alloc:A({adu:1})});
+add({id:'a_ps',t:'alm',g:'Almacenamiento',n:'Posiciones de picking secos',qty:940,rate:660.402,alloc:A({pik:1})});
+add({id:'a_pc',t:'alm',g:'Almacenamiento',n:'Posiciones de picking congelados',qty:150,rate:1323.18,alloc:A({pik:1})});
+add({id:'a_pr',t:'alm',g:'Almacenamiento',n:'Posiciones de picking refrigerados',qty:50,rate:1323.18,alloc:A({pik:1})});
+// Montos mensuales
+add({id:'x_idt',t:'amt',g:'Distribución',n:'ID Logistics transporte',amount:136924018,e:.85,tr:1,alloc:A({dis:1})});
+add({id:'x_rf',t:'amt',g:'Distribución',n:'RF16 transporte',amount:155022484,e:.5,tr:1,alloc:A({dis:1})});
+add({id:'trips',t:'trips',g:'Distribución',n:'Viajes adicionales (tarifario)',alloc:A({dis:1})});
+add({id:'x_adu',t:'amt',g:'Aduana',n:'Aduana (ABANS)',amount:37795884,e:0,imp:1,alloc:A({adu:1})});
+add({id:'x_out',t:'amt',g:'Outsourcing',n:'Outsourcing (ABANS)',amount:15148747,e:0,imp:1,alloc:A({adu:1})});
+add({id:'x_pw',t:'amt',g:'Planexware',n:'Planexware (Krikos)',amount:3853686,e:0,alloc:A({tec:1})});
+add({id:'x_cp',t:'amt',g:'Copernico',n:'Copernico (VGS Software)',amount:8845000,e:0,alloc:A({tec:1})});
+add({id:'x_dt',t:'amt',g:'Dispatchtrack',n:'Dispatchtrack',amount:2744000,e:0,alloc:A({tec:1})});
+add({id:'o_com',t:'amt',g:'Gastos operativos',n:'Servicio de comedor',amount:34703000,e:0,hc:1,alloc:A({sop:1})});
+add({id:'o_seg',t:'amt',g:'Gastos operativos',n:'Seguridad',amount:17948000,e:0,alloc:A({sop:1})});
+add({id:'o_lim',t:'amt',g:'Gastos operativos',n:'Limpieza',amount:18667000,e:0,alloc:A({sop:1})});
+add({id:'o_otr',t:'amt',g:'Gastos operativos',n:'Otros gastos operativos',amount:19231036,e:0,alloc:A({sop:1})});
+add({id:'s_chu',t:'amt',g:'Insumos & Seguros',n:'Seguro Chubb',amount:1500000,e:0,alloc:A({sop:1})});
+add({id:'s_mer',t:'amt',g:'Insumos & Seguros',n:'Seguro Mercantil Andina',amount:500000,e:0,alloc:A({sop:1})});
+add({id:'s_mar',t:'amt',g:'Insumos & Seguros',n:'Marken',amount:7000000,e:1,alloc:A({pik:.5,des:.5})});
+add({id:'s_sto',t:'amt',g:'Insumos & Seguros',n:'Storage Compact',amount:19000000,e:0,alloc:A({alm:1})});
+add({id:'s_bri',t:'amt',g:'Insumos & Seguros',n:'Brisol (bolsas)',amount:2000000,e:1,alloc:A({des:1})});
+// Inversiones (cuota mensual)
+add({id:'i_ith',t:'amt',g:'Inversiones',n:'IT hardware',amount:1403146,e:0,alloc:A({tec:1})});
+add({id:'i_its',t:'amt',g:'Inversiones',n:'IT software',amount:316423,e:0,alloc:A({tec:1})});
+add({id:'i_eq',t:'amt',g:'Inversiones',n:'Equipamientos varios',amount:3134204,e:0,alloc:A({sop:1})});
+add({id:'i_su',t:'amt',g:'Inversiones',n:'Start up',amount:483624,e:0,alloc:A({sop:1})});
+add({id:'i_mfc',t:'amt',g:'Inversiones',n:'Inversión MFC',amount:2795730,e:0,alloc:A({pik:1})});
+add({id:'i_pd1',t:'amt',g:'Inversiones',n:'Inversión PDA adicional',amount:1784928,e:0,alloc:A({rec:.5,pik:.5})});
+add({id:'i_est',t:'amt',g:'Inversiones',n:'Estanterías nuevo layout',amount:1794922,e:0,alloc:A({alm:1})});
+add({id:'i_pd2',t:'amt',g:'Inversiones',n:'Inversión PDA adicional 2',amount:1697361,e:0,alloc:A({rec:.5,pik:.5})});
+add({id:'i_bat',t:'amt',g:'Inversiones',n:'Batea química',amount:2546056,e:0,alloc:A({alm:1})});
+
+// Tarifario de transporte, noviembre (1ra vuelta / 2da vuelta)
+var TRIPS=[
+ ['Norte','Master',312914,219040],['Norte','Chasis 8 pallets',323736,226615],['Norte','Chasis 12 pallets',357449,250214],['Norte','Fiorino',194472,136131],
+ ['CABA','Master',338762,237134],['CABA','Chasis 8 pallets',349585,244709],['CABA','Chasis 12 pallets',371088,259762],['CABA','Fiorino',192280,134596],
+ ['Sur','Master',357449,250214],['Sur','Chasis 8 pallets',371088,259762],['Sur','Chasis 12 pallets',393901,275731],['Sur','Fiorino',207822,145476],
+ ['Mar del Plata','Master',775282,542697],['Mar del Plata','Chasis 8 pallets',1040788,728552],['Mar del Plata','Chasis 12 pallets',1072295,750606],
+ ['Córdoba','Master',1128920,790244],['Córdoba','Chasis 8 pallets',1515534,1060873],['Córdoba','Chasis 12 pallets',1812008,1268406],
+ ['Norte (frío)','Chasis 8 pallets',475000,475000]
+];
+
+/* ---------- Estado ---------- */
+function clone(o){return JSON.parse(JSON.stringify(o))}
+var P0={units:U0,days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false};
+var P=clone(P0), L=clone(DEF), TR=TRIPS.map(function(){return [0,0]});
+var HC0=0; DEF.forEach(function(l){if(l.t==='rol')HC0+=l.heads}); HC0+=1;
+var K=1;
+
+/* ---------- Motor de cálculo ---------- */
+function normAlloc(a){
+  var s=0,k,r={};for(k in a)s+=Math.max(0,a[k]||0);
+  if(s<=0){r.sop=1;return r}
+  for(k in a)r[k]=Math.max(0,a[k]||0)/s;return r;
+}
+function tripsCost(p,trips,trInc){
+  var s=0;TRIPS.forEach(function(r,i){s+=(trips[i][0]*r[2]+trips[i][1]*r[3])});
+  return s*(1+p.trInc);
+}
+function compute(p,lines,trips,k){
+  var dVol=p.units/U0-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0;
+  // dotación
+  var heads={};
+  for(i=0;i<lines.length;i++){l=lines[i];
+    if(l.t==='rol'){h=l.heads*(1+l.e*dVol)/(1+l.prod); if(p.round)h=Math.ceil(h-1e-9); heads[l.id]=h; hcTot+=h;}
+  }
+  hcTot+=1;
+  var persByProc={},persTot=0;
+  for(i=0;i<lines.length;i++){l=lines[i];c=0;
+    switch(l.t){
+      case 'mgmt': c=l.monthly*(1+p.wage)*k;break;
+      case 'rol': c=heads[l.id]*l.daily*p.days*(1+p.wage)*k;break;
+      case 'maq': {var q=l.qty*(1+l.e*dVol); if(p.round)q=Math.ceil(q-1e-9); c=q*l.unit*dcR*(1+p.whInc); heads[l.id]=q;break;}
+      case 'alm': {var qq=l.qty*(1+(l.adu?p.dImp:p.dPos)); c=qq*l.rate*p.dc*(1+p.whInc); heads[l.id]=qq;break;}
+      case 'amt': {
+        var m=l.amount*(1+l.e*dVol);
+        if(l.imp)m=l.amount*(1+p.dImp);
+        if(l.hc)m=l.amount*(hcTot/HC0);
+        c=m*(l.tr?(1+p.trInc):(1+p.whInc)); if(l.g==='Inversiones')c=l.amount;
+        break;}
+      case 'trips': c=tripsCost(p,trips); break;
+      case 'hhee': c=0;break;
+    }
+    items.push({l:l,c:c,h:heads[l.id]});
+    if(l.g==='Personal'){persTot+=c;var al=normAlloc(l.alloc),kk;for(kk in al)persByProc[kk]=(persByProc[kk]||0)+c*al[kk];}
+  }
+  // HHEE
+  var hh=persTot*p.hheePct*(1+0);
+  for(i=0;i<items.length;i++){if(items[i].l.t==='hhee')items[i].c=hh;}
+  var byProc={},byGrp={},total=0,hcProc={};
+  PROC.forEach(function(x){byProc[x.id]=0;hcProc[x.id]=0});
+  GROUPS.forEach(function(g){byGrp[g]=0});
+  items.forEach(function(it){
+    var al,kk;total+=it.c;byGrp[it.l.g]+=it.c;
+    if(it.l.t==='hhee'){
+      for(kk in persByProc)byProc[kk]+=it.c*(persTot?persByProc[kk]/persTot:0);
+    }else{
+      al=normAlloc(it.l.alloc);for(kk in al)byProc[kk]+=it.c*al[kk];
+      if(it.l.t==='rol'){for(kk in al)hcProc[kk]+=it.h*al[kk];}
+      if(it.l.t==='mgmt'){hcProc.adm+=1;}
+    }
+  });
+  var direct=clone(byProc);
+  if(p.prorate){
+    var rec=PROC.filter(function(x){return x.r}),w=0;rec.forEach(function(x){w+=direct[x.id]});
+    ['tec','adm','sop'].forEach(function(o){rec.forEach(function(x){byProc[x.id]+=direct[o]*direct[x.id]/w});byProc[o]=0});
+  }
+  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,
+          dist:byGrp['Distribución'],whse:total-byGrp['Distribución']};
+}
+
+/* ---------- Calibración ---------- */
+var rawBase=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),1);
+K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
+var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
+
+/* ---------- Render: estructura ---------- */
+var TABS=[['concepto','Por concepto'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+function buildTabs(){
+  var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
+  $('tabs').innerHTML=h;
+  $('tabs').addEventListener('click',function(e){
+    var b=e.target.closest('button');if(!b)return;var id=b.getAttribute('data-tab');
+    Array.prototype.forEach.call($('tabs').children,function(x){x.setAttribute('aria-selected',x===b)});
+    Array.prototype.forEach.call(document.querySelectorAll('.tabpane'),function(p){p.hidden=p.getAttribute('data-tab')!==id});
+  });
+}
+function lineById(id){for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i]}
+function num(id,key,val,cls,step,pct){
+  var v=pct?+(val*100).toFixed(4):val;
+  return '<input type="number" class="'+(cls||'')+'" data-id="'+id+'" data-k="'+key+'" data-pct="'+(pct?1:0)+'" step="'+(step||'any')+'" value="'+v+'">';
+}
+function buildTables(){
+  var h,i;
+  // Personal
+  h='<thead><tr><th>Rol</th><th>HC base</th><th>$/día por HC</th><th>Elasticidad</th><th>Productividad Δ%</th><th>HC escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  L.forEach(function(l){
+    if(l.t==='mgmt')h+='<tr><td class="name">'+l.n+' <span class="pill">fijo mensual</span></td><td>1</td><td>'+num(l.id,'monthly',l.monthly,'',1000)+'</td><td>—</td><td>—</td><td>1</td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
+    if(l.t==='rol')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'heads',l.heads,'s',0.01)+'</td><td>'+num(l.id,'daily',l.daily,'',100)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td>'+num(l.id,'prod',l.prod,'s',1,true)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
+  });
+  h+='<tr><td class="name">HHEE y adicionales <span class="pill">% sobre personal</span></td><td></td><td></td><td></td><td></td><td></td><td data-b="hhee"></td><td data-c="hhee"></td></tr>';
+  h+='<tr class="tot"><td>Total personal + HHEE</td><td></td><td></td><td></td><td></td><td id="hcTotCell"></td><td id="persBase"></td><td id="persEsc"></td></tr></tbody>';
+  $('tPersonal').innerHTML=h;
+  // Maquinaria
+  h='<thead><tr><th>Equipo</th><th>Cantidad base</th><th>$/mes por equipo</th><th>Elasticidad</th><th>Cant. escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  L.forEach(function(l){if(l.t==='maq')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'qty',l.qty,'s',1)+'</td><td>'+num(l.id,'unit',l.unit,'',1000)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>'});
+  h+='</tbody>';$('tMaq').innerHTML=h;
+  h='<thead><tr><th>Tipo de posición</th><th>Posiciones base</th><th>$/posición/día</th><th>Posiciones escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  L.forEach(function(l){if(l.t==='alm')h+='<tr><td class="name">'+l.n+(l.adu?' <span class="pill">sigue Δ importaciones</span>':'')+'</td><td>'+num(l.id,'qty',l.qty,'s',10)+'</td><td>'+num(l.id,'rate',l.rate,'',1)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>'});
+  h+='</tbody>';$('tAlm').innerHTML=h;
+  // Otros
+  h='<thead><tr><th>Concepto</th><th>Grupo</th><th>Monto mensual base</th><th>Elasticidad</th><th>Se mueve con</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  L.forEach(function(l){if(l.t==='amt'){
+    var drv=l.imp?'Δ importaciones':(l.hc?'Dotación total':(l.tr?'Volumen + transporte':(l.g==='Inversiones'?'Fijo':'Volumen')));
+    var el=(l.imp||l.hc||l.g==='Inversiones')?'—':num(l.id,'e',l.e,'s',0.05);
+    h+='<tr><td class="name">'+l.n+'</td><td style="text-align:left">'+l.g+'</td><td>'+num(l.id,'amount',l.amount,'',10000)+'</td><td>'+el+'</td><td style="text-align:left">'+drv+'</td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
+  }});
+  h+='</tbody>';$('tOtros').innerHTML=h;
+  h='<thead><tr><th>Zona</th><th>Vehículo</th><th>Tarifa 1ra vuelta</th><th>Tarifa 2da vuelta</th><th>Viajes extra 1ra</th><th>Viajes extra 2da</th><th>Costo extra (M)</th></tr></thead><tbody>';
+  TRIPS.forEach(function(r,i){h+='<tr><td style="text-align:left">'+r[0]+'</td><td style="text-align:left">'+r[1]+'</td><td>'+f0(r[2])+'</td><td>'+(r[0].indexOf('frío')>-1?'—':f0(r[3]))+'</td><td><input type="number" class="s" data-trip="'+i+'" data-v="0" min="0" step="1" value="0"></td><td>'+(r[0].indexOf('frío')>-1?'—':'<input type="number" class="s" data-trip="'+i+'" data-v="1" min="0" step="1" value="0">')+'</td><td data-tc="'+i+'"></td></tr>'});
+  h+='</tbody>';$('tTrips').innerHTML=h;
+  // Asignación
+  h='<thead><tr><th>Línea</th>';PROC.forEach(function(p){h+='<th title="'+p.n+'">'+p.n.split(' ')[0]+'</th>'});h+='<th>Σ</th></tr></thead><tbody>';
+  L.forEach(function(l){if(l.t==='hhee')return;
+    h+='<tr><td class="name">'+l.n+'</td>';
+    PROC.forEach(function(p){h+='<td><input type="number" class="s" data-id="'+l.id+'" data-al="'+p.id+'" min="0" step="5" value="'+((l.alloc[p.id]||0)*100)+'"></td>'});
+    h+='<td data-sum="'+l.id+'"></td></tr>';
+  });
+  h+='</tbody>';$('tAsig').innerHTML=h;
+}
+
+/* ---------- Render: resultados ---------- */
+function delta(a,b){return b? (a/b-1):0}
+function dcls(v,inverse){return v>0.0005?'up':(v<-0.0005?'down':'')}
+function render(){
+  var R=compute(P,L,TR,K), B=BASE, i;
+  var tot=R.total, dT=delta(tot,B.total);
+  var usd=tot/P.fx, lines=P.units*LPU;
+  var pctRev=usd/P.netRev, pctRev0=B.total/P0.fx/P0.netRev;
+  $('basepill').textContent='Base: noviembre 2026 · '+M(B.total)+' M ARS · TC '+f0(P0.fx);
+  // KPIs
+  var dU=delta(tot/P.units,B.total/U0), dL=delta(tot/lines,B.total/(U0*LPU));
+  var vsBud=usd-P.budget;
+  var k=[
+   ['Costo total del mes',M(tot)+' M','<span class="'+dcls(dT)+'">'+sg(dT)+'</span> vs noviembre'],
+   ['Costo total en USD','US$ '+f0(usd),'Budget US$ '+f0(P.budget)+' · <span class="'+(vsBud>0?'up':'down')+'">'+(vsBud>0?'+':'')+f0(vsBud)+'</span>'],
+   ['Costo por unidad pickeada','$ '+nf2.format(tot/P.units),'<span class="'+dcls(dU)+'">'+sg(dU)+'</span> · base $ '+nf2.format(B.total/U0)],
+   ['Costo por línea','$ '+f0(tot/lines),'<span class="'+dcls(dL)+'">'+sg(dL)+'</span> · '+f0(lines)+' líneas'],
+   ['Logística / net revenue',pc(pctRev,2),'Base '+pc(pctRev0,2)+' · Plan 6,50%'],
+   ['Warehouse / Distribución',pc(R.whse/tot,0)+' / '+pc(R.dist/tot,0),'Whse '+M(R.whse)+' M · Dist '+M(R.dist)+' M']
+  ];
+  var h='';k.forEach(function(x){h+='<div class="kpi"><div class="l">'+x[0]+'</div><div class="v">'+x[1]+'</div><div class="d">'+x[2]+'</div></div>'});
+  $('kpis').innerHTML=h;
+  // Procesos
+  var mx=0;PROC.forEach(function(p){mx=Math.max(mx,R.byProc[p.id],B.byProc[p.id])});
+  h='<thead><tr><th>Proceso</th><th>HC</th><th>Base (M)</th><th>Escenario (M)</th><th>Δ%</th><th>% del total</th><th>$/unidad</th><th>US$ miles</th><th>Base vs escenario</th></tr></thead><tbody>';
+  PROC.forEach(function(p){
+    var v=R.byProc[p.id],b=B.byProc[p.id],d=delta(v,b);
+    if(P.prorate&&!p.r&&p.id!=='dis'){h+='<tr style="opacity:.45"><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td><td colspan="8" style="text-align:left">Prorrateado en los procesos operativos</td></tr>';return}
+    h+='<tr><td><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</td><td>'+(R.hcProc[p.id]?nf1.format(R.hcProc[p.id]):'—')+'</td><td>'+M(b)+'</td><td><b>'+M(v)+'</b></td><td class="'+dcls(d)+'">'+(b?sg(d):'—')+'</td><td>'+pc(v/tot)+'</td><td>'+nf2.format(v/P.units)+'</td><td>'+f0(v/P.fx/1000)+'</td><td><div class="bar"><i class="b" style="width:'+(b/mx*100)+'%"></i><i class="s" style="width:'+(v/mx*100)+'%;background:'+p.c+'"></i></div></td></tr>';
+  });
+  h+='<tr class="tot"><td>Total</td><td>'+nf1.format(R.hcTot)+'</td><td>'+M(B.total)+'</td><td>'+M(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>'+nf2.format(tot/P.units)+'</td><td>'+f0(usd/1000)+'</td><td></td></tr></tbody>';
+  $('procTable').innerHTML=h;
+  // stack
+  var sh='',lg='';
+  PROC.forEach(function(p){var v=R.byProc[p.id];if(v<=0)return;var w=v/tot*100;
+    sh+='<div style="width:'+w+'%;background:'+p.c+'" title="'+p.n+': '+M(v)+' M">'+(w>6?Math.round(w)+'%':'')+'</div>';
+    lg+='<span><span class="dot" style="background:'+p.c+'"></span>'+p.n+'</span>';});
+  $('stack').innerHTML=sh;$('legend').innerHTML=lg;
+  // Concepto
+  h='<thead><tr><th>Concepto</th><th>Planilla Nov (col. N)</th><th>Modelo base</th><th>Dif.</th><th>Escenario</th><th>Δ vs base</th><th>% total</th><th>% total BX</th><th>% whse</th><th>% whse BY</th></tr></thead><tbody>';
+  var whB=0;
+  GROUPS.forEach(function(g){var s=SHEET[g],v=R.byGrp[g],b=B.byGrp[g],isD=g==='Distribución';
+    h+='<tr><td>'+g+'</td><td>'+f0(s[0])+'</td><td>'+f0(b)+'</td><td class="'+(Math.abs(b-s[0])>1000?'warn':'')+'">'+f0(b-s[0])+'</td><td><b>'+f0(v)+'</b></td><td class="'+dcls(delta(v,b))+'">'+(b?sg(delta(v,b)):'—')+'</td><td>'+pc(v/tot,2)+'</td><td>'+pc(s[1],2)+'</td><td>'+(isD?'—':pc(v/R.whse,2))+'</td><td>'+(s[2]==null?'—':pc(s[2],2))+'</td></tr>';});
+  h+='<tr class="tot"><td>Total</td><td>'+f0(SHEET_TOTAL)+'</td><td>'+f0(B.total)+'</td><td>'+f0(B.total-SHEET_TOTAL)+'</td><td>'+f0(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>100%</td><td></td><td></td></tr></tbody>';
+  $('conceptTable').innerHTML=h;
+  $('calibNote').innerHTML='Factor de calibración de personal: <b>'+nf2.format(K)+'</b> (Control financiero con dotación diaria: '+M(rawBase.byGrp['Personal'])+' M; Resumen: '+M(PERSONAL_SHEET)+' M). El factor se aplica a todas las líneas de personal.';
+  // Líneas: costos
+  Array.prototype.forEach.call(document.querySelectorAll('[data-c]'),function(td){var id=td.getAttribute('data-c');
+    var it=R.items.filter(function(x){return x.l.id===id})[0],bi=B.items.filter(function(x){return x.l.id===id})[0];
+    td.innerHTML='<b>'+M(it.c)+'</b>';var bt=document.querySelector('[data-b="'+id+'"]');if(bt)bt.textContent=M(bi.c);});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-b]'),function(td){var id=td.getAttribute('data-b');
+    var bi=B.items.filter(function(x){return x.l.id===id})[0];td.textContent=M(bi.c);});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-h]'),function(td){var id=td.getAttribute('data-h');td.textContent=nf1.format(R.heads[id]);});
+  var pe=R.byGrp['Personal']+R.byGrp['HHEE'],pb=B.byGrp['Personal']+B.byGrp['HHEE'];
+  $('persBase').textContent=M(pb);$('persEsc').innerHTML='<b>'+M(pe)+'</b>';
+  var hcs=0;R.items.forEach(function(x){if(x.l.t==='rol')hcs+=x.h});$('hcTotCell').textContent=nf1.format(hcs+1);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-tc]'),function(td){var i=+td.getAttribute('data-tc');td.textContent=M((TR[i][0]*TRIPS[i][2]+TR[i][1]*TRIPS[i][3])*(1+P.trInc))});
+  Array.prototype.forEach.call(document.querySelectorAll('[data-sum]'),function(td){var l=lineById(td.getAttribute('data-sum')),s=0,k2;for(k2 in l.alloc)s+=l.alloc[k2]||0;
+    td.textContent=pc(s,0);td.className=Math.abs(s-1)>0.001?'warn':'';});
+  // Sensibilidad
+  h='<thead><tr><th>Δ volumen</th><th>Unidades</th><th>Costo total (M)</th><th>Δ costo</th><th>$/unidad</th><th>Δ $/unidad</th><th>Picking (M)</th><th>Distribución (M)</th></tr></thead><tbody>';
+  var ref=compute(P,L,TR,K);
+  [-30,-20,-10,0,10,20,30,50].forEach(function(dv){
+    var pp=clone(P);pp.units=P.units*(1+dv/100);var r=compute(pp,L,TR,K);
+    h+='<tr'+(dv===0?' class="tot"':'')+'><td>'+(dv>0?'+':'')+dv+'%</td><td>'+f0(pp.units)+'</td><td>'+M(r.total)+'</td><td>'+sg(delta(r.total,ref.total))+'</td><td>'+nf2.format(r.total/pp.units)+'</td><td class="'+dcls(delta(r.total/pp.units,ref.total/P.units))+'">'+sg(delta(r.total/pp.units,ref.total/P.units))+'</td><td>'+M(r.byProc.pik)+'</td><td>'+M(r.byProc.dis)+'</td></tr>';});
+  h+='</tbody>';$('tSens').innerHTML=h;
+  var dv=P.units/U0-1;
+  $('dvol_txt').textContent=(dv>=0?'+':'')+(dv*100).toFixed(1).replace('.',',')+'% vs noviembre ('+f0(U0)+' unidades)';
+  $('p_dvol').value=Math.round(dv*100);
+}
+
+/* ---------- Eventos ---------- */
+var PF={units:0,days:0,dc:0,dPos:1,dImp:1,wage:1,whInc:1,trInc:1,hheePct:1,fx:0,budget:0,netRev:0};
+function syncParams(){
+  Object.keys(PF).forEach(function(k){var el=$('p_'+k);el.value=PF[k]?+(P[k]*100).toFixed(3):P[k]});
+  $('p_round').checked=P.round;$('p_prorate').checked=P.prorate;
+}
+function bind(){
+  Object.keys(PF).forEach(function(k){
+    $('p_'+k).addEventListener('input',function(e){var v=parseFloat(e.target.value);if(isNaN(v))return;P[k]=PF[k]?v/100:v;render();});
+  });
+  $('p_dvol').addEventListener('input',function(e){P.units=Math.round(U0*(1+parseFloat(e.target.value)/100));$('p_units').value=P.units;render();});
+  $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
+  $('p_prorate').addEventListener('change',function(e){P.prorate=e.target.checked;render()});
+  document.addEventListener('input',function(e){
+    var t=e.target;if(t.tagName!=='INPUT'||t.type!=='number')return;
+    var v=parseFloat(t.value);if(isNaN(v))v=0;
+    if(t.hasAttribute('data-trip')){TR[+t.getAttribute('data-trip')][+t.getAttribute('data-v')]=v;render();return}
+    var id=t.getAttribute('data-id');if(!id)return;var l=lineById(id);
+    if(t.hasAttribute('data-al')){l.alloc[t.getAttribute('data-al')]=v/100;render();return}
+    var key=t.getAttribute('data-k');if(!key)return;
+    l[key]=t.getAttribute('data-pct')==='1'?v/100:v;render();
+  });
+  $('b_reset').addEventListener('click',function(){P=clone(P0);L=clone(DEF);TR=TRIPS.map(function(){return [0,0]});buildTables();syncParams();render();toast('Escenario restablecido a noviembre')});
+  $('b_copy').addEventListener('click',copySummary);
+}
+function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},2200)}
+function copySummary(){
+  var R=compute(P,L,TR,K),B=BASE,rows=[['Proceso','Base Nov (ARS)','Escenario (ARS)','Delta %','% total','ARS/unidad']];
+  PROC.forEach(function(p){rows.push([p.n,Math.round(B.byProc[p.id]),Math.round(R.byProc[p.id]),(delta(R.byProc[p.id],B.byProc[p.id])*100).toFixed(1),(R.byProc[p.id]/R.total*100).toFixed(1),(R.byProc[p.id]/P.units).toFixed(2)]);});
+  rows.push(['Total',Math.round(B.total),Math.round(R.total),(delta(R.total,B.total)*100).toFixed(1),'100',(R.total/P.units).toFixed(2)]);
+  var txt=rows.map(function(r){return r.join('\t')}).join('\n');
+  function fallback(){var ta=document.createElement('textarea');ta.value=txt;document.body.appendChild(ta);ta.select();var ok=false;try{ok=document.execCommand('copy')}catch(e){}document.body.removeChild(ta);toast(ok?'Resumen copiado, pegalo en Sheets':'No se pudo copiar')}
+  try{navigator.clipboard.writeText(txt).then(function(){toast('Resumen copiado, pegalo en Sheets')},fallback)}catch(e){fallback()}
+}
+
+buildTabs();buildTables();syncParams();bind();render();
+window.__sim={compute:compute,P0:P0,DEF:DEF,TRIPS:TRIPS,K:K,BASE:BASE,SHEET:SHEET};
+})();
+</script>
