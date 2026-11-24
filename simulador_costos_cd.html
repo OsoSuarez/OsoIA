@@ -58,8 +58,10 @@ main{min-width:0;display:grid;gap:16px}
 .card{background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:16px;min-width:0}
 .card>h2{margin-bottom:4px}
 .card .sub{color:var(--muted);font-size:12px;margin:0 0 12px;max-width:90ch}
-.tabs{display:flex;gap:4px;flex-wrap:wrap;border-bottom:1px solid var(--line)}
-.tabs button{border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
+.tabs{display:flex;gap:4px;overflow-x:auto;scrollbar-width:thin;border-bottom:1px solid var(--line);position:sticky;top:0;z-index:6;background:var(--bg);padding-top:4px}
+.tabpane.rsm{display:grid;gap:16px}
+.tabpane.rsm[hidden]{display:none}
+.tabs button{flex:none;white-space:nowrap;border:0;border-bottom:2px solid transparent;border-radius:0;background:none;padding:8px 12px;color:var(--muted)}
 .tabs button[aria-selected=true]{color:var(--ink);border-bottom-color:var(--accent);font-weight:600}
 .tabpane[hidden]{display:none}
 .scroll{overflow-x:auto;max-width:100%}
@@ -159,6 +161,9 @@ th.proj{color:var(--accent)}
     </aside>
 
     <main>
+      <div class="tabs" role="tablist" id="tabs" aria-label="Secciones del simulador"></div>
+
+      <div class="tabpane rsm" data-tab="resumen">
       <section class="kpis" id="kpis" aria-live="polite"></section>
 
       <section class="card">
@@ -170,9 +175,23 @@ th.proj{color:var(--accent)}
       </section>
 
       <section class="card">
-        <div class="tabs" role="tablist" id="tabs"></div>
+        <details open>
+          <summary>Cómo está armado y qué supuestos usé</summary>
+          <ul>
+            <li>Costo total, personal, maquinaria y almacenamiento de noviembre se reproducen con la planilla (ver «Por concepto», columna Dif.).</li>
+            <li>Personal: el Control financiero suma 385,8 M con la dotación diaria, el Resumen muestra 372,4 M. Calibré al Resumen con un factor (se informa abajo del cuadro por concepto).</li>
+            <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
+            <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
+            <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
+            <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
+            <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
+          </ul>
+        </details>
+      </section>
+      </div>
 
-        <div class="tabpane" data-tab="concepto">
+      <section class="card" id="paneCard" hidden>
+        <div class="tabpane" data-tab="concepto" hidden>
           <h2 style="margin-top:14px">Por concepto, igual que el Resumen de gastos</h2>
           <p class="sub">La columna «Planilla Nov» es la columna N del Resumen. «% total» y «% whse» del modelo se comparan con las columnas BX y BY.</p>
           <div class="scroll"><table id="conceptTable"></table></div>
@@ -261,20 +280,6 @@ th.proj{color:var(--accent)}
         </div>
       </section>
 
-      <section class="card">
-        <details open>
-          <summary>Cómo está armado y qué supuestos usé</summary>
-          <ul>
-            <li>Costo total, personal, maquinaria y almacenamiento de noviembre se reproducen con la planilla (ver «Por concepto», columna Dif.).</li>
-            <li>Personal: el Control financiero suma 385,8 M con la dotación diaria, el Resumen muestra 372,4 M. Calibré al Resumen con un factor (se informa abajo del cuadro por concepto).</li>
-            <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
-            <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
-            <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
-            <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
-            <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
-          </ul>
-        </details>
-      </section>
     </main>
   </div>
 </div>
@@ -522,7 +527,7 @@ K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
 /* ---------- Render: estructura ---------- */
-var TABS=[['concepto','Por concepto'],['evolucion','Evolución del CD'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['resumen','Resumen'],['concepto','Por concepto'],['evolucion','Evolución del CD'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
@@ -530,6 +535,7 @@ function buildTabs(){
     var b=e.target.closest('button');if(!b)return;var id=b.getAttribute('data-tab');
     Array.prototype.forEach.call($('tabs').children,function(x){x.setAttribute('aria-selected',x===b)});
     Array.prototype.forEach.call(document.querySelectorAll('.tabpane'),function(p){p.hidden=p.getAttribute('data-tab')!==id});
+    $('paneCard').hidden=(id==='resumen');
   });
 }
 function lineById(id){for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i]}
