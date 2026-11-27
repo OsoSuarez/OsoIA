@@ -113,6 +113,23 @@ td input.w{width:120px;text-align:left}
 #nsTable td input.s{width:72px}
 #nsTable td input.w{width:200px}
 td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--input-line);background:var(--input);color:var(--ink)}
+.layout.nopanel{grid-template-columns:minmax(0,1fr)}
+.layout.nopanel aside.panel{display:none}
+.pillbtn{border:0;cursor:pointer;font:inherit;font-size:11px}
+.pillbtn:hover{filter:brightness(.94)}
+.ctry{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:14px;margin:12px 0 18px}
+.ctry button{text-align:left;display:grid;gap:8px;padding:16px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;color:var(--ink);font:inherit;min-width:0}
+.ctry button:hover{border-color:var(--muted)}
+.ctry button[aria-pressed=true]{border-color:var(--accent);box-shadow:0 0 0 2px var(--accent-soft);background:var(--accent-soft)}
+.ctry .cd{width:44px;height:44px;border-radius:10px;display:grid;place-items:center;font-family:var(--f-head);font-weight:700;font-size:16px;background:var(--surface2);color:var(--ink)}
+.ctry button[aria-pressed=true] .cd{background:var(--accent);color:var(--accent-ink)}
+.ctry .cn{font-family:var(--f-head);font-size:20px;font-weight:600}
+.ctry .cm{font-size:12px;color:var(--muted)}
+.ctry .cs2{font-size:13px;font-variant-numeric:tabular-nums}
+.steps{margin:8px 0 0;padding-left:20px;color:var(--ink)}
+.steps li{margin-bottom:4px}
+.bar2{height:8px;border-radius:4px;background:var(--surface2);overflow:hidden;margin:6px 0 2px}
+.bar2 i{display:block;height:100%;background:var(--accent)}
 @media (prefers-reduced-motion:no-preference){.bar i{transition:width .25s}}
 </style>
 
@@ -122,10 +139,10 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
       <h1>Simulador de costos del CD</h1>
       <p>Apertura por proceso, calibrada con noviembre 2026: Resumen de gastos (col. N, BX y BY) y Control financiero BAU. Las celdas amarillas se pueden editar.</p>
     </div>
-    <span class="pill" id="basepill"></span>
+    <button class="pill pillbtn" id="basepill" type="button" title="Cambiar de país"></button>
   </header>
 
-  <div class="layout">
+  <div class="layout nopanel" id="layoutRoot">
     <aside class="panel" aria-label="Supuestos del escenario">
       <h2 style="margin-bottom:10px">Escenario</h2>
 
@@ -153,7 +170,7 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
 
       <div class="grp"><h3>Moneda y referencia</h3></div>
       <div class="row2">
-        <div class="field"><label for="p_fx">TC ARS/USD</label><input type="number" id="p_fx" step="1"></div>
+        <div class="field"><label for="p_fx">TC <span class="curc">ARS</span>/USD</label><input type="number" id="p_fx" step="1"></div>
         <div class="field"><label for="p_budget">Budget USD</label><input type="number" id="p_budget" step="1000"></div>
       </div>
       <div class="field"><label for="p_netRev">Net revenue USD (trend)</label><input type="number" id="p_netRev" step="10000"></div>
@@ -171,7 +188,16 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
     <main>
       <div class="tabs" role="tablist" id="tabs" aria-label="Secciones del simulador"></div>
 
-      <div class="tabpane rsm" data-tab="resumen">
+      <div class="tabpane" data-tab="pais">
+        <section class="card">
+          <h2>Elegí el país</h2>
+          <p class="sub">Cada país tiene su propia estructura de costos, volumen y supuestos, y el simulador guarda lo que cargues por separado. Argentina ya tiene los datos de noviembre 2026. Los otros países arrancan como plantilla: la misma estructura por proceso, sin costos, lista para completar.</p>
+          <div class="ctry" id="ctryGrid"></div>
+          <div id="ctryInfo"></div>
+        </section>
+      </div>
+
+      <div class="tabpane rsm" data-tab="simulacion" hidden>
       <section class="kpis" id="kpis" aria-live="polite"></section>
 
       <section class="card">
@@ -182,21 +208,6 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
         <div class="scroll" style="margin-top:12px"><table id="procTable"></table></div>
       </section>
 
-      <section class="card">
-        <details open>
-          <summary>Cómo está armado y qué supuestos usé</summary>
-          <ul>
-            <li>Costo total, personal, maquinaria y almacenamiento de noviembre se reproducen con la planilla (ver «Por concepto», columna Dif.).</li>
-            <li>Personal: el Control financiero suma 385,8 M con la dotación diaria, el Resumen muestra 372,4 M. Calibré al Resumen con un factor (se informa abajo del cuadro por concepto).</li>
-            <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
-            <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
-            <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
-            <li>Dotación y equipos: por defecto se dimensionan con la capacidad de cada persona o equipo (trabajo por día ÷ capacidad) y se redondean hacia arriba. La capacidad base sale de noviembre, así que el costo base sigue coincidiendo con tu planilla. Con la dotación redondeada, el factor de calibración de personal baja porque la planilla usa promedios diarios.</li>
-            <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
-            <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
-          </ul>
-        </details>
-      </section>
       </div>
 
       <section class="card" id="paneCard" hidden>
@@ -208,7 +219,7 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
         </div>
 
         <div class="tabpane" data-tab="simulacion" hidden>
-          <h2 style="margin-top:14px">Simulación de volumen</h2>
+          <h2 style="margin-top:14px">Volumen del mes</h2>
           <p class="sub">Órdenes por mes, multiplicadas por el basket size (unidades por orden) dan las unidades. Las unidades divididas por las unidades por línea dan las líneas. Esas unidades y líneas mueven el costo de todas las solapas. Base de órdenes: plan de tu planilla Darkstore Cost 2027 (solapa Órdenes Q1).</p>
           <h3>Cadena del mes simulado</h3>
           <div class="flow" id="simFlow"></div>
@@ -234,6 +245,21 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
             <summary>Órdenes por tienda del plan (Órdenes Q1)</summary>
             <div class="scroll" style="margin-top:10px"><table id="stTable"></table></div>
           </details>
+          <section class="card" style="margin-top:16px">
+        <details open>
+          <summary>Cómo está armado y qué supuestos usé</summary>
+          <ul>
+            <li>Costo total, personal, maquinaria y almacenamiento de noviembre se reproducen con la planilla (ver «Por concepto», columna Dif.).</li>
+            <li>Personal: el Control financiero suma 385,8 M con la dotación diaria, el Resumen muestra 372,4 M. Calibré al Resumen con un factor (se informa abajo del cuadro por concepto).</li>
+            <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
+            <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
+            <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
+            <li>Dotación y equipos: por defecto se dimensionan con la capacidad de cada persona o equipo (trabajo por día ÷ capacidad) y se redondean hacia arriba. La capacidad base sale de noviembre, así que el costo base sigue coincidiendo con tu planilla. Con la dotación redondeada, el factor de calibración de personal baja porque la planilla usa promedios diarios.</li>
+            <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
+            <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
+          </ul>
+        </details>
+      </section>
         </div>
 
         <div class="tabpane" data-tab="capacidad" hidden>
@@ -255,7 +281,7 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
           <div class="charts" id="evCharts"></div>
           <h3>Indicadores por mes</h3>
           <div class="scroll" style="margin:8px 0 16px"><table id="evTable"></table></div>
-          <h3>Costo por línea movida, por proceso (ARS)</h3>
+          <h3>Costo por línea movida, por proceso (<span class="curc">ARS</span>)</h3>
           <p class="sub">Muestra qué proceso explica los movimientos del costo por línea. Solo hay apertura por proceso desde nov-26, que es la base del simulador.</p>
           <div class="scroll" style="margin:8px 0 16px"><table id="evProc"></table></div>
           <p class="note">El volumen proyectado (órdenes, unidades y líneas) sale de la solapa Simulación. El % costo sobre ventas proyectado usa el net revenue del panel, escalado con las unidades.</p>
@@ -263,6 +289,7 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
 
         <div class="tabpane" data-tab="openbook" hidden>
           <h2 style="margin-top:14px">Aumentos Open Book</h2>
+          <p class="note" id="obNote" hidden>Los índices de aumento (FADEEAC, CEDOL, dólar BNA) y el gatillo del 5 % son de Argentina. Para este país usá los extras % del panel o cargalos cuando tengas su cláusula de ajuste.</p>
           <p class="sub">Misma lógica que Costeo CD-47: ID ajusta cuando el índice acumulado contra la última base aplicada llega al 5%, y el aumento rige el mes siguiente. Cada línea de costo sigue su índice: personal y horas extra con FADEEAC; maquinaria e inversiones con el dólar; comedor, seguridad y limpieza con CEDOL; distribución con CEDOL transporte. Almacenamiento, aduana, tecnología e insumos no tienen índice.</p>
           <h3>Dónde está cada índice contra su gatillo</h3>
           <div class="scroll" style="margin:8px 0 16px"><table id="obRacks"></table></div>
@@ -333,13 +360,14 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
 (function(){
 'use strict';
 /* ---------- Formatos ---------- */
-var nf0=new Intl.NumberFormat('es-AR',{maximumFractionDigits:0});
-var nf1=new Intl.NumberFormat('es-AR',{minimumFractionDigits:1,maximumFractionDigits:1});
-var nf2=new Intl.NumberFormat('es-AR',{minimumFractionDigits:2,maximumFractionDigits:2});
+function NF(o){var f=new Intl.NumberFormat('es-AR',o);return {format:function(v){return f.format(isFinite(v)?v:0)}}}
+var nf0=NF({maximumFractionDigits:0});
+var nf1=NF({minimumFractionDigits:1,maximumFractionDigits:1});
+var nf2=NF({minimumFractionDigits:2,maximumFractionDigits:2});
 function f0(v){return nf0.format(v)}
 function M(v){return nf1.format(v/1e6)}
-function pc(v,d){d=d==null?1:d;return (v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
-function sg(v,d){d=d==null?1:d;var s=(v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});return (v>0?'+':'')+s+'%'}
+function pc(v,d){d=d==null?1:d;if(!isFinite(v))v=0;return (v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d})+'%'}
+function sg(v,d){d=d==null?1:d;if(!isFinite(v))v=0;var s=(v*100).toLocaleString('es-AR',{minimumFractionDigits:d,maximumFractionDigits:d});return (v>0?'+':'')+s+'%'}
 function $(id){return document.getElementById(id)}
 
 /* ---------- Procesos ---------- */
@@ -597,17 +625,81 @@ var rawBase=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),1);
 K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
+/* ---------- Países ---------- */
+var COUNTRIES=[{id:'AR',n:'Argentina',cur:'ARS'},{id:'MX',n:'México',cur:'MXN'},{id:'PE',n:'Perú',cur:'PEN'},{id:'CL',n:'Chile',cur:'CLP'},{id:'BR',n:'Brasil',cur:'BRL'}];
+var CT={},CS={},CUR_ID='AR',CURC='ARS',CS_ON=false,LSK='cdsim.v1.';
+function CTRY(){var c=COUNTRIES.filter(function(x){return x.id===CUR_ID})[0];return {id:c.id,n:c.n,cur:c.cur,cal:CT[CUR_ID].cal}}
+function zerosTR(){return TRIPS.map(function(){return [0,0]})}
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
+function persist(){if(!CS_ON)return;lsSet(LSK+CUR_ID,JSON.stringify({P:P,L:L,TR:TR}));lsSet(LSK+'country',CUR_ID)}
+function loadSaved(id){var raw=lsGet(LSK+id);if(!raw)return null;try{var o=JSON.parse(raw);if(o&&o.P&&o.L&&o.TR&&o.L.length===CT[id].def.length&&o.TR.length===TRIPS.length&&o.P.sim)return o}catch(e){}return null}
+function initCtx(){
+  CT.AR={def:clone(DEF),p0:clone(P0),trips:clone(TRIPS),K:K,base:BASE,cal:true,cur:'ARS'};
+  COUNTRIES.forEach(function(c){
+    if(c.id==='AR')return;
+    var def=clone(CT.AR.def);
+    def.forEach(function(l){if(l.t==='mgmt')l.monthly=0;if(l.t==='rol')l.daily=0;if(l.t==='maq')l.unit=0;if(l.t==='alm')l.rate=0;if(l.t==='amt')l.amount=0});
+    var p0=clone(CT.AR.p0);p0.fx=1;p0.budget=0;p0.netRev=0;p0.useIdx=false;
+    var tr=CT.AR.trips.map(function(r){return [r[0],r[1],0,0]}),sv=TRIPS;
+    TRIPS=tr;var b=compute(p0,def,tr.map(function(){return [0,0]}),1);TRIPS=sv;
+    CT[c.id]={def:def,p0:p0,trips:tr,K:1,base:b,cal:false,cur:c.cur};
+  });
+}
+function activateCountry(id,first){
+  if(CS_ON){CS[CUR_ID]={P:P,L:L,TR:TR};persist()}
+  CUR_ID=id;var c=CT[id];CURC=c.cur;
+  DEF=c.def;P0=c.p0;TRIPS=c.trips;K=c.K;BASE=c.base;
+  var st=CS[id]||loadSaved(id);
+  P=st?Object.assign(clone(P0),st.P):clone(P0);L=st?st.L:clone(DEF);TR=st?st.TR:zerosTR();
+  if(!c.cal)P.useIdx=false;
+  CS[id]={P:P,L:L,TR:TR};CS_ON=true;
+  Array.prototype.forEach.call(document.querySelectorAll('.curc'),function(n){n.textContent=CURC});
+  $('p_useIdx').disabled=!c.cal;
+  buildTables();syncParams();
+  if(!first)render();
+}
+function calcCountry(id){
+  var c=CT[id],st=CS[id]||loadSaved(id)||null,sv=TRIPS;TRIPS=c.trips;
+  var p=st?Object.assign(clone(c.p0),st.P):c.p0,l=st?st.L:c.def,tr=st?st.TR:c.trips.map(function(){return [0,0]});
+  var r=compute(p,l,tr,c.K);TRIPS=sv;return {r:r,p:p};
+}
+function moneyFill(){
+  var n=0,f=0;L.forEach(function(l){var v=null;if(l.t==='rol')v=l.daily;else if(l.t==='mgmt')v=l.monthly;else if(l.t==='maq')v=l.unit;else if(l.t==='alm')v=l.rate;else if(l.t==='amt')v=l.amount;if(v==null)return;n++;if(v>0)f++});
+  return {n:n,f:f};
+}
+function renderCountries(){
+  var h='';
+  COUNTRIES.forEach(function(c){
+    var x=calcCountry(c.id),tot=x.r.total,sel=c.id===CUR_ID;
+    h+='<button type="button" data-ctry="'+c.id+'" aria-pressed="'+sel+'"><span class="cd">'+c.id+'</span><span class="cn">'+c.n+'</span>'+
+      (tot>0?'<span class="pill" style="background:var(--accent-soft);color:var(--accent)">Con costos cargados</span>':'<span class="pill">Plantilla sin costos</span>')+
+      '<span class="cs2">'+(tot>0?'<b>'+M(tot)+' M '+c.cur+'</b> por mes':'Moneda: '+c.cur)+'</span>'+
+      '<span class="cm">'+(c.id==='AR'?'Datos reales de noviembre 2026':'Estructura lista para completar')+'</span></button>';
+  });
+  $('ctryGrid').innerHTML=h;
+  var c=CTRY(),m=moneyFill(),pct=m.n?m.f/m.n:0,info='<div class="card" style="margin-top:0"><h3>Trabajando con '+c.n+'</h3>';
+  if(c.cal){
+    info+='<p class="sub" style="margin:8px 0 12px">Calibrado con tu planilla de noviembre 2026 (Resumen de gastos, Control financiero BAU y Evolución CD). Incluye aumentos por índices, plan de órdenes por tienda y capacidades.</p>';
+  }else{
+    info+='<p class="sub" style="margin:8px 0 6px">Plantilla de '+c.n+' en '+c.cur+'. Tiene la misma estructura por proceso que Argentina. El volumen, la dotación y las capacidades parten de los de Argentina como referencia, y los costos están en cero.</p><div class="bar2"><i style="width:'+(pct*100)+'%"></i></div><span class="cm">'+m.f+' de '+m.n+' líneas con costo cargado</span><ol class="steps"><li>Cargá la moneda y el tipo de cambio en el panel de la solapa Simulación.</li><li>Completá el costo por rol en la solapa Personal.</li><li>Cargá máquinas y posiciones en Equipos y almacenaje.</li><li>Completá transporte, aduana, tecnología y otros en Transporte y otros.</li><li>Reemplazá el volumen y la dotación de referencia por los de '+c.n+'.</li></ol>';
+  }
+  info+='<div class="btns"><button class="primary" type="button" data-go="simulacion">Continuar con '+c.n+'</button></div></div>';
+  $('ctryInfo').innerHTML=info;
+}
 /* ---------- Render: estructura ---------- */
-var TABS=[['resumen','Resumen'],['simulacion','Simulación'],['capacidad','Capacidad'],['evolucion','Evolución del CD'],['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['pais','País'],['simulacion','Simulación'],['capacidad','Capacidad'],['evolucion','Evolución del CD'],['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
-  $('tabs').addEventListener('click',function(e){
-    var b=e.target.closest('button');if(!b)return;var id=b.getAttribute('data-tab');
-    Array.prototype.forEach.call($('tabs').children,function(x){x.setAttribute('aria-selected',x===b)});
-    Array.prototype.forEach.call(document.querySelectorAll('.tabpane'),function(p){p.hidden=p.getAttribute('data-tab')!==id});
-    $('paneCard').hidden=(id==='resumen');
-  });
+  $('tabs').addEventListener('click',function(e){var b=e.target.closest('button');if(b)showTab(b.getAttribute('data-tab'))});
+}
+function showTab(id){
+  Array.prototype.forEach.call($('tabs').children,function(x){x.setAttribute('aria-selected',x.getAttribute('data-tab')===id)});
+  Array.prototype.forEach.call(document.querySelectorAll('.tabpane'),function(p){p.hidden=p.getAttribute('data-tab')!==id});
+  $('paneCard').hidden=(id==='pais');
+  $('layoutRoot').className='layout'+(id==='pais'?' nopanel':'');
+  try{window.scrollTo(0,0)}catch(e){}
 }
 function lineById(id){for(var i=0;i<L.length;i++)if(L[i].id===id)return L[i]}
 function num(id,key,val,cls,step,pct){
@@ -670,7 +762,7 @@ function render(){
   var tot=R.total, dT=delta(tot,B.total);
   var usd=tot/P.fx, V=R.vol, VB=B.vol, lines=V.lines;
   var pctRev=usd/(P.netRev*R.vol.units/B.vol.units), pctRev0=B.total/P0.fx/P0.netRev;
-  $('basepill').textContent='Base: noviembre 2026 · '+M(B.total)+' M ARS · TC '+f0(P0.fx);
+  $('basepill').textContent=CTRY().n+' · '+(B.total>0?'base nov-26 '+M(B.total)+' M '+CURC+' · TC '+f0(P0.fx):'plantilla sin costos')+' · cambiar';
   // KPIs
   var dU=delta(tot/V.units,B.total/VB.units), dL=delta(tot/lines,B.total/VB.lines);
   var vsBud=usd-P.budget;
@@ -703,11 +795,11 @@ function render(){
   // Concepto
   h='<thead><tr><th>Concepto</th><th>Planilla Nov (col. N)</th><th>Modelo base</th><th>Dif.</th><th>Escenario</th><th>Δ vs base</th><th>% total</th><th>% total BX</th><th>% whse</th><th>% whse BY</th></tr></thead><tbody>';
   var whB=0;
-  GROUPS.forEach(function(g){var s=SHEET[g],v=R.byGrp[g],b=B.byGrp[g],isD=g==='Distribución';
-    h+='<tr><td>'+g+'</td><td>'+f0(s[0])+'</td><td>'+f0(b)+'</td><td class="'+(Math.abs(b-s[0])>1000?'warn':'')+'">'+f0(b-s[0])+'</td><td><b>'+f0(v)+'</b></td><td class="'+dcls(delta(v,b))+'">'+(b?sg(delta(v,b)):'—')+'</td><td>'+pc(v/tot,2)+'</td><td>'+pc(s[1],2)+'</td><td>'+(isD?'—':pc(v/R.whse,2))+'</td><td>'+(s[2]==null?'—':pc(s[2],2))+'</td></tr>';});
-  h+='<tr class="tot"><td>Total</td><td>'+f0(SHEET_TOTAL)+'</td><td>'+f0(B.total)+'</td><td>'+f0(B.total-SHEET_TOTAL)+'</td><td>'+f0(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>100%</td><td></td><td></td></tr></tbody>';
+  GROUPS.forEach(function(g){var cal=CTRY().cal,s=cal?SHEET[g]:[null,null,null],v=R.byGrp[g],b=B.byGrp[g],isD=g==='Distribución';
+    h+='<tr><td>'+g+'</td><td>'+(cal?f0(s[0]):'—')+'</td><td>'+f0(b)+'</td><td class="'+(cal&&Math.abs(b-s[0])>1000?'warn':'')+'">'+(cal?f0(b-s[0]):'—')+'</td><td><b>'+f0(v)+'</b></td><td class="'+dcls(delta(v,b))+'">'+(b?sg(delta(v,b)):'—')+'</td><td>'+pc(v/tot,2)+'</td><td>'+(cal?pc(s[1],2):'—')+'</td><td>'+(isD?'—':pc(v/R.whse,2))+'</td><td>'+(s[2]==null?'—':pc(s[2],2))+'</td></tr>';});
+  h+='<tr class="tot"><td>Total</td><td>'+(CTRY().cal?f0(SHEET_TOTAL):'—')+'</td><td>'+f0(B.total)+'</td><td>'+(CTRY().cal?f0(B.total-SHEET_TOTAL):'—')+'</td><td>'+f0(tot)+'</td><td class="'+dcls(dT)+'">'+sg(dT)+'</td><td>100%</td><td>100%</td><td></td><td></td></tr></tbody>';
   $('conceptTable').innerHTML=h;
-  $('calibNote').innerHTML='Factor de calibración de personal: <b>'+nf2.format(K)+'</b> (Control financiero con dotación diaria: '+M(rawBase.byGrp['Personal'])+' M; Resumen: '+M(PERSONAL_SHEET)+' M). El factor se aplica a todas las líneas de personal.';
+  $('calibNote').innerHTML=!CTRY().cal?'Este país no tiene planilla de referencia: los costos son los que cargues.':'Factor de calibración de personal: <b>'+nf2.format(K)+'</b> (Control financiero con dotación diaria: '+M(rawBase.byGrp['Personal'])+' M; Resumen: '+M(PERSONAL_SHEET)+' M). El factor se aplica a todas las líneas de personal.';
   // Líneas: costos
   Array.prototype.forEach.call(document.querySelectorAll('[data-c]'),function(td){var id=td.getAttribute('data-c');
     var it=R.items.filter(function(x){return x.l.id===id})[0],bi=B.items.filter(function(x){return x.l.id===id})[0];
@@ -734,9 +826,12 @@ function render(){
   $('volTxt').innerHTML=lbl(P.month)+': '+f0(vv.orders)+' órdenes · '+nf2.format(vv.units/1e6)+' M unidades · '+f0(vv.lines/1000)+' k líneas';
   renderSim(R);
   renderCap(R);
+  renderCountries();persist();
 }
 
 /* ---------- Evolución del CD ---------- */
+var EVH_E={m:[],ars:[],usd:[],fx:[],lines:[],units:[],lMFC:[],uMFC:[],pCost:[],pVentas:[],prod:[]};
+function EV(){return CTRY().cal?EVH:EVH_E}
 var EVH={
  m:['2025-12','2026-01','2026-02','2026-03','2026-04','2026-05','2026-06','2026-07','2026-08','2026-09','2026-10'],
  ars:[706825576,631170121,621276261,695284377,675526440,827302802,976590878,931443357,964738665,991373899,1021080602],
@@ -750,28 +845,29 @@ var EVH={
  pVentas:[6.04,6.91,6.30,5.76,5.76,5.01,6.80,6.83,6.50,7.09,6.28],
  prod:[31.9,38.7,31.5,38.3,40.7,37.7,36.8,43.7,60.4,60.4,null]};
 var EV_SRC={evo:{units:3674567,lines:259974},res:{units:3432736,lines:262484}};
-var nf3=new Intl.NumberFormat('es-AR',{minimumFractionDigits:3,maximumFractionDigits:3});
+var nf3=NF({minimumFractionDigits:3,maximumFractionDigits:3});
 function evBuild(){
-  var out=[],i;
-  for(i=0;i<EVH.m.length;i++){
-    var o={m:EVH.m[i],real:true,ars:EVH.ars[i],usd:EVH.usd[i],fx:EVH.fx[i],lines:EVH.lines[i],units:EVH.units[i],lMFC:EVH.lMFC[i],uMFC:EVH.uMFC[i],pCost:EVH.pCost[i]/100,pVentas:EVH.pVentas[i]/100,prod:EVH.prod[i]};
+  var out=[],i,H=EV();
+  for(i=0;i<H.m.length;i++){
+    var o={m:H.m[i],real:true,ars:H.ars[i],usd:H.usd[i],fx:H.fx[i],lines:H.lines[i],units:H.units[i],lMFC:H.lMFC[i],uMFC:H.uMFC[i],pCost:H.pCost[i]/100,pVentas:H.pVentas[i]/100,prod:H.prod[i]};
     out.push(o);
   }
   OB_SIM.forEach(function(m,j){
     var pp=clone(P);pp.month=m;
     var r=compute(pp,L,TR,K),vr=r.vol.units/UREF,usd=r.total/P.fx,nr=P.netRev*vr,lines=r.vol.lines,units=r.vol.units;
-    out.push({m:m,real:false,ars:r.total,usd:usd,fx:P.fx,lines:lines,units:units,lMFC:lines*P.ev.pLin/100,uMFC:units*P.ev.pUni/100,pCost:P.ev.pCost/100,pVentas:usd/nr,prod:null,byProc:r.byProc});
+    out.push({m:m,real:false,ars:r.total,usd:usd,fx:P.fx,lines:lines,units:units,lMFC:lines*P.ev.pLin/100,uMFC:units*P.ev.pUni/100,pCost:P.ev.pCost/100,pVentas:nr?usd/nr:0,prod:null,byProc:r.byProc});
   });
   out.forEach(function(o,i){
     o.cLineUsd=o.usd/o.lines;o.cUnitUsd=o.usd/o.units;o.cLineArs=o.ars/o.lines;o.cUnitArs=o.ars/o.units;
     o.pLinMFC=o.lMFC/o.lines;o.pLinFC=1-o.pLinMFC;
     o.uMfcArs=o.ars*o.pCost/o.uMFC;o.uFcArs=o.ars*(1-o.pCost)/(o.units-o.uMFC);
-    o.vLine=i?o.cLineUsd/out[i-1].cLineUsd-1:null;o.vUnit=i?o.cUnitUsd/out[i-1].cUnitUsd-1:null;
+    o.vLine=i&&out[i-1].cLineUsd?o.cLineUsd/out[i-1].cLineUsd-1:null;o.vUnit=i&&out[i-1].cUnitUsd?o.cUnitUsd/out[i-1].cUnitUsd-1:null;
   });
   return out;
 }
 function evChart(o){
   var W=640,H=o.h||220,pl=54,pr=14,pt=22,pb=28,n=o.labels.length,split=o.split,i,all=[];
+  o.series.forEach(function(s){s.vals=s.vals.map(function(v){return isFinite(v)?v:null})});
   o.series.forEach(function(s){s.vals.forEach(function(v){if(v!=null)all.push(v)})});
   if(o.ref!=null)all.push(o.ref);
   var mx=Math.max.apply(null,all),mn=o.bars?0:Math.min.apply(null,all),pad=(mx-mn)*0.14||1;
@@ -804,7 +900,7 @@ function evCard(title,sub,svg,legend){
 }
 function evStack(E){
   var proj=E.filter(function(o){return !o.real}),W=640,H=240,pl=54,pr=14,pt=14,pb=28,n=proj.length,mx=0,g='',i,t;
-  proj.forEach(function(o){mx=Math.max(mx,o.ars)});mx*=1.08;
+  proj.forEach(function(o){mx=Math.max(mx,o.ars)});mx=(mx*1.08)||1;
   var step=(W-pl-pr)/n,bw=step*0.6,Y=function(v){return pt+(H-pt-pb)*(1-v/mx)};
   for(t=0;t<=3;t++){var v=mx*t/3;g+='<line x1="'+pl+'" x2="'+(W-pr)+'" y1="'+Y(v)+'" y2="'+Y(v)+'" style="stroke:var(--line)"/><text x="'+(pl-6)+'" y="'+(Y(v)+3.5)+'" text-anchor="end" font-size="10" style="fill:var(--muted)">'+f0(v/1e6)+' M</text>';}
   proj.forEach(function(o,i){var acc=0,x=pl+step*i+(step-bw)/2;
@@ -814,7 +910,7 @@ function evStack(E){
   return '<svg viewBox="0 0 '+W+' '+H+'" role="img" aria-label="Costo por proceso, proyección">'+g+'</svg>';
 }
 function renderEvo(){
-  var E=evBuild(),labels=E.map(function(o){return lbl(o.m)}),split=EVH.m.length;
+  var E=evBuild(),labels=E.map(function(o){return lbl(o.m)}),split=EV().m.length;
   var col=function(f){return E.map(f)};
   var c='';
   c+=evCard('Costo por línea movida (USD)','Gasto en USD dividido por líneas (SKU-tienda).',evChart({title:'Costo por línea',labels:labels,split:split,fmt:function(v){return nf2.format(v)},series:[{c:'--accent',vals:col(function(o){return o.cLineUsd})}]}));
@@ -823,27 +919,27 @@ function renderEvo(){
   c+=evCard('Líneas movidas (miles)','Volumen en líneas SKU-tienda.',evChart({title:'Líneas movidas',labels:labels,split:split,fmt:function(v){return nf0.format(v/1000)+' k'},series:[{c:'--accent',vals:col(function(o){return o.lines})}]}));
   c+=evCard('Costo logístico sobre ventas','Plan del año: 6,5 %.',evChart({title:'% costo sobre ventas',labels:labels,split:split,ref:0.065,refLbl:'Plan 6,5%',fmt:function(v){return (v*100).toFixed(1).replace('.',',')+'%'},series:[{c:'--c2',vals:col(function(o){return o.pVentas})}]}));
   c+=evCard('Mix de picking: MFC vs Fullcase','Porcentaje de líneas por modalidad.',evChart({title:'Mix MFC vs Fullcase',labels:labels,split:split,fmt:function(v){return Math.round(v*100)+'%'},series:[{c:'--accent',vals:col(function(o){return o.pLinMFC})},{c:'--c2',vals:col(function(o){return o.pLinFC})}]}),[['% líneas MFC','--accent'],['% líneas Fullcase','--c2']]);
-  c+=evCard('Costo de mover 1 unidad (ARS)','Reparto del gasto según el % asignado a MFC.',evChart({title:'Costo de mover una unidad',labels:labels,split:split,fmt:function(v){return f0(v)},series:[{c:'--accent',vals:col(function(o){return o.uMfcArs})},{c:'--c2',vals:col(function(o){return o.uFcArs})}]}),[['MFC','--accent'],['Fullcase','--c2']]);
+  c+=evCard('Costo de mover 1 unidad ('+CURC+')','Reparto del gasto según el % asignado a MFC.',evChart({title:'Costo de mover una unidad',labels:labels,split:split,fmt:function(v){return f0(v)},series:[{c:'--accent',vals:col(function(o){return o.uMfcArs})},{c:'--c2',vals:col(function(o){return o.uFcArs})}]}),[['MFC','--accent'],['Fullcase','--c2']]);
   var lg=PROC.filter(function(p){return !(P.prorate&&!p.r&&p.id!=='dis')}).map(function(p){return '<span><i style="background:'+p.c+'"></i>'+p.n+'</span>'}).join('');
-  c+='<div class="cc"><h3>Costo por proceso (proyección)</h3><p class="cs">ARS en millones, apilado por proceso.</p><div class="lg">'+lg+'</div>'+evStack(E)+'</div>';
+  c+='<div class="cc"><h3>Costo por proceso (proyección)</h3><p class="cs">'+CURC+' en millones, apilado por proceso.</p><div class="lg">'+lg+'</div>'+evStack(E)+'</div>';
   $('evCharts').innerHTML=c;
   // tabla
   var rows=[
-   ['Gasto total (ARS M)',function(o){return M(o.ars)}],
+   ['Gasto total ('+CURC+' M)',function(o){return M(o.ars)}],
    ['Gasto total (USD)',function(o){return f0(o.usd)}],
    ['Tipo de cambio',function(o){return f0(o.fx)}],
    ['Líneas movidas',function(o){return f0(o.lines)}],
    ['Unidades movidas',function(o){return f0(o.units)}],
    ['Unidades por línea',function(o){return nf1.format(o.units/o.lines)}],
    ['Costo por línea (USD)',function(o){return nf2.format(o.cLineUsd)},1],
-   ['Costo por línea (ARS)',function(o){return f0(o.cLineArs)},1],
+   ['Costo por línea ('+CURC+')',function(o){return f0(o.cLineArs)},1],
    ['Costo por unidad (USD)',function(o){return nf3.format(o.cUnitUsd)},1],
-   ['Costo por unidad (ARS)',function(o){return nf2.format(o.cUnitArs)},1],
+   ['Costo por unidad ('+CURC+')',function(o){return nf2.format(o.cUnitArs)},1],
    ['Var. mensual costo por línea',function(o){return o.vLine==null?'—':sg(o.vLine)},0,function(o){return o.vLine==null?'':dcls(o.vLine)}],
    ['Var. mensual costo por unidad',function(o){return o.vUnit==null?'—':sg(o.vUnit)},0,function(o){return o.vUnit==null?'':dcls(o.vUnit)}],
    ['% líneas MFC',function(o){return pc(o.pLinMFC)}],
-   ['Costo de mover 1 unidad MFC (ARS)',function(o){return f0(o.uMfcArs)}],
-   ['Costo de mover 1 unidad Fullcase (ARS)',function(o){return f0(o.uFcArs)}],
+   ['Costo de mover 1 unidad MFC ('+CURC+')',function(o){return f0(o.uMfcArs)}],
+   ['Costo de mover 1 unidad Fullcase ('+CURC+')',function(o){return f0(o.uFcArs)}],
    ['% costo logístico / ventas',function(o){return pc(o.pVentas,2)}],
    ['Productividad picking (líneas/h)',function(o){return o.prod==null?'—':nf1.format(o.prod)}]];
   var h='<thead><tr><th>Indicador</th>'+E.map(function(o){return '<th'+(o.real?'':' class="proj"')+'>'+lbl(o.m)+'</th>'}).join('')+'</tr></thead><tbody>';
@@ -872,6 +968,8 @@ function renderCap(R){
 }
 function stateOf(acc,u){return acc>=u?'<span class="pill" style="background:var(--bad);color:#fff">Dispara</span>':(acc>=u*0.6?'<span class="pill" style="color:var(--warn)">Atención</span>':'<span class="pill">Tranquilo</span>')}
 function renderOB(){
+  if(!CTRY().cal){$('obNote').hidden=false;['obRacks','obTraj','obEvents'].forEach(function(i){$(i).innerHTML=''});$('idxTxt').textContent='Aumentos por índices disponibles solo para Argentina.';return}
+  $('obNote').hidden=true;
   var Fx=obFactors(P),ind=Fx.ind,RF=relFactors(P),u=OB_CFG.umbral/100,h;
   var fams=[['mo','FADEEAC mano de obra'],['cedol','CEDOL sin transporte'],['usd','Dólar BNA venta'],['tte','CEDOL distribución']];
   h='<thead><tr><th>Índice</th><th>Base vigente</th><th>Último real</th><th>Acumulado vs base</th><th>Estado</th><th>Efecto vs noviembre en '+lbl(P.month)+'</th></tr></thead><tbody>';
@@ -978,6 +1076,10 @@ function bind(){
   $('p_month').addEventListener('change',function(e){P.month=e.target.value;render()});
   document.addEventListener('change',function(e){var t=e.target;if(t.tagName==='SELECT'&&t.hasAttribute('data-ns')){var q=t.getAttribute('data-ns').split('|');P.sim.ns[+q[0]][q[1]]=t.value;render()}});
   document.addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.hasAttribute('data-nsdel')){P.sim.ns.splice(+b.getAttribute('data-nsdel'),1);buildNs();render()}});
+  document.addEventListener('click',function(e){var b=e.target.closest('button');if(!b)return;
+    if(b.hasAttribute('data-ctry')){activateCountry(b.getAttribute('data-ctry'));showTab('simulacion')}
+    else if(b.hasAttribute('data-go'))showTab(b.getAttribute('data-go'));
+    else if(b.id==='basepill')showTab('pais')});
   $('ns_add').addEventListener('click',function(){P.sim.ns.push({n:'Nueva tienda',open:'2027-05',reg:AVG_TIPO,canib:15});buildNs();render()});
   $('p_capMode').addEventListener('change',function(e){P.capMode=e.target.value==='cap';render()});
   $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
@@ -1005,7 +1107,7 @@ function bind(){
 }
 function toast(m){var t=$('toast');t.textContent=m;t.hidden=false;clearTimeout(toast._t);toast._t=setTimeout(function(){t.hidden=true},2200)}
 function copySummary(){
-  var R=compute(P,L,TR,K),B=BASE,rows=[['Proceso','Base Nov (ARS)','Escenario (ARS)','Delta %','% total','ARS/unidad']];
+  var R=compute(P,L,TR,K),B=BASE,rows=[['Proceso','Base Nov ('+CURC+')','Escenario ('+CURC+')','Delta %','% total',CURC+'/unidad']];
   PROC.forEach(function(p){rows.push([p.n,Math.round(B.byProc[p.id]),Math.round(R.byProc[p.id]),(delta(R.byProc[p.id],B.byProc[p.id])*100).toFixed(1),(R.byProc[p.id]/R.total*100).toFixed(1),(R.byProc[p.id]/R.vol.units).toFixed(2)]);});
   rows.push(['Total',Math.round(B.total),Math.round(R.total),(delta(R.total,B.total)*100).toFixed(1),'100',(R.total/R.vol.units).toFixed(2)]);
   var txt=rows.map(function(r){return r.join('\t')}).join('\n');
@@ -1013,7 +1115,7 @@ function copySummary(){
   try{navigator.clipboard.writeText(txt).then(function(){toast('Resumen copiado, pegalo en Sheets')},fallback)}catch(e){fallback()}
 }
 
-buildTabs();buildTables();syncParams();bind();render();
+buildTabs();initCtx();var startId=lsGet(LSK+'country');if(!CT[startId])startId='AR';activateCountry(startId,true);bind();render();showTab('pais');
 window.__sim={volFor:volFor,compute:compute,P0:P0,DEF:DEF,TRIPS:TRIPS,K:K,BASE:BASE,SHEET:SHEET};
 })();
 </script>
