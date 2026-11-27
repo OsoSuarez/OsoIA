@@ -159,7 +159,8 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
       <div class="field"><label for="p_netRev">Net revenue USD (trend)</label><input type="number" id="p_netRev" step="10000"></div>
 
       <div class="grp"><h3>Opciones</h3></div>
-      <label class="chk"><input type="checkbox" id="p_round"><span>Redondear dotación hacia arriba (personas enteras)</span></label>
+      <div class="field"><label for="p_capMode">Cómo se dimensiona dotación y equipos</label><select id="p_capMode"><option value="cap">Por capacidad de cada persona y equipo</option><option value="ela">Por elasticidad al volumen</option></select></div>
+      <label class="chk"><input type="checkbox" id="p_round"><span>Redondear dotación y equipos hacia arriba (sin decimales)</span></label>
       <label class="chk"><input type="checkbox" id="p_prorate"><span>Prorratear Tecnología, Administración y Soporte sobre los procesos operativos</span></label>
       <div class="btns">
         <button class="primary" id="b_copy">Copiar resumen</button>
@@ -190,6 +191,7 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
             <li>HHEE no se abre por rol en la planilla; se modela como porcentaje del personal y se reparte entre procesos en proporción al personal.</li>
             <li>Transporte: el desglose por zona y vehículo solo lo tengo diario para los primeros días, así que el costo base es el total de noviembre (ID 136,9 M y RF16 155,0 M) con elasticidad editable. El tarifario sirve para sumar viajes extra.</li>
             <li>Aduana y Outsourcing: ABANS (52,9 M) = Aduana 37,8 M + Outsourcing 15,1 M; ambos van a Aduana.</li>
+            <li>Dotación y equipos: por defecto se dimensionan con la capacidad de cada persona o equipo (trabajo por día ÷ capacidad) y se redondean hacia arriba. La capacidad base sale de noviembre, así que el costo base sigue coincidiendo con tu planilla. Con la dotación redondeada, el factor de calibración de personal baja porque la planilla usa promedios diarios.</li>
             <li>Aumentos: se usa la lógica de Costeo CD-47. El mes base es noviembre, que ya incluye el ajuste de octubre; para los meses siguientes se aplica el cambio de cada índice (gatillo del 5% contra la última base de ID).</li>
             <li>Los repartos a procesos (maquinistas, equipos, inversiones, insumos) son supuestos míos y se editan en «Asignación».</li>
           </ul>
@@ -232,6 +234,14 @@ td select{font:inherit;padding:4px 6px;border-radius:6px;border:1px solid var(--
             <summary>Órdenes por tienda del plan (Órdenes Q1)</summary>
             <div class="scroll" style="margin-top:10px"><table id="stTable"></table></div>
           </details>
+        </div>
+
+        <div class="tabpane" data-tab="capacidad" hidden>
+          <h2 style="margin-top:14px">Capacidad y utilización</h2>
+          <p class="sub">Para cada rol y máquina que depende del volumen: cuánto trabajo por día cae en el mes simulado, cuánto puede hacer cada persona o equipo, cuántos hacen falta y qué tan ocupados quedan después de redondear. La capacidad base sale de noviembre: volumen por día dividido por la dotación de la planilla. Se edita en las solapas Personal y Equipos y almacenaje.</p>
+          <div class="flow" id="capFlow"></div>
+          <div class="scroll"><table id="capTable"></table></div>
+          <p class="note">Utilización = trabajo por día ÷ (cantidad asignada × capacidad). Con 100 % no hay holgura. Los administrativos y el equipo de inventarios no tienen capacidad por volumen y se dimensionan con su elasticidad.</p>
         </div>
 
         <div class="tabpane" data-tab="evolucion" hidden>
@@ -458,7 +468,7 @@ function volFor(p,month){
   var mult=S.volMult||1,orders=(base+add-can)*mult,aov=S.aov[j]*(1+(S.aovD||0)/100),units=orders*aov,ul=S.ul[j]||1;
   return {j:j,m:SIM_M[j],base:base*mult,add:add*mult,can:can*mult,orders:orders,aov:aov,units:units,ul:ul,lines:units/ul,tiendas:SIMD.tp[j]+opened,days:SIMD.cal[j]};
 }
-var P0={days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:false,prorate:false,useIdx:true,month:'2026-11',ev:{pLin:55.6,pUni:29.8,pCost:42.2},sim:SIM_DEF(),infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
+var P0={days:25,dc:30,dPos:0,dImp:0,wage:0,whInc:0,trInc:0,hheePct:79904765/PERSONAL_SHEET,fx:1616,budget:631993,netRev:9722977,round:true,capMode:true,prorate:false,useIdx:true,month:'2026-11',ev:{pLin:55.6,pUni:29.8,pCost:42.2},sim:SIM_DEF(),infl:{mo:2.4,cedol:1.9,usd:1,tte:2.5},idxOv:{}};
 var P=clone(P0), L=clone(DEF), TR=TRIPS.map(function(){return [0,0]});
 var HC0=0; DEF.forEach(function(l){if(l.t==='rol')HC0+=l.heads}); HC0+=1;
 var K=1;
@@ -527,9 +537,10 @@ function tripsCostRaw(trips){var s=0;TRIPS.forEach(function(r,i){s+=(trips[i][0]
 function compute(p,lines,trips,k){
   var vv=volFor(p), dVol=vv.units/UREF-1, dcR=p.dc/30, items=[], i, l, c, h, hcTot=0, RF=relFactors(p);
   function mu(f){return (f==='mo'?1+p.wage:(f==='tte'?1+p.trInc:1+p.whInc))*(RF[f]||1)}
-  var heads={};
+  var heads={},need={};
+  function dvv(d){return d==='lines'?vv.lines:(d==='units'?vv.units:vv.orders)}
   for(i=0;i<lines.length;i++){l=lines[i];
-    if(l.t==='rol'){h=l.heads*(1+l.e*dVol)/(1+l.prod); if(p.round)h=Math.ceil(h-1e-9); heads[l.id]=h; hcTot+=h;}
+    if(l.t==='rol'){var raw=(p.capMode&&l.drv&&l.cap)?dvv(l.drv)/p.days/l.cap:l.heads*(1+l.e*dVol); raw=raw/(1+l.prod); need[l.id]=raw; h=p.round?Math.ceil(raw-1e-9):raw; heads[l.id]=h; hcTot+=h;}
   }
   hcTot+=1;
   var persByProc={},persTot=0;
@@ -537,7 +548,7 @@ function compute(p,lines,trips,k){
     switch(l.t){
       case 'mgmt': c=l.monthly*mu('mo')*k;break;
       case 'rol': c=heads[l.id]*l.daily*p.days*mu('mo')*k;break;
-      case 'maq': {var q=l.qty*(1+l.e*dVol); if(p.round)q=Math.ceil(q-1e-9); c=q*l.unit*dcR*mu(l.f); heads[l.id]=q;break;}
+      case 'maq': {var qr=(p.capMode&&l.drv&&l.cap)?dvv(l.drv)/p.days/l.cap:l.qty*(1+l.e*dVol); need[l.id]=qr; var q=p.round?Math.ceil(qr-1e-9):qr; c=q*l.unit*dcR*mu(l.f); heads[l.id]=q;break;}
       case 'alm': {var qq=l.qty*(1+(l.adu?p.dImp:p.dPos)); c=qq*l.rate*p.dc*mu(l.f); heads[l.id]=qq;break;}
       case 'amt': {
         var m=l.amount*(1+l.e*dVol);
@@ -571,18 +582,23 @@ function compute(p,lines,trips,k){
     var rec=PROC.filter(function(x){return x.r}),w=0;rec.forEach(function(x){w+=direct[x.id]});
     ['tec','adm','sop'].forEach(function(o){rec.forEach(function(x){byProc[x.id]+=direct[o]*direct[x.id]/w});byProc[o]=0});
   }
-  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,RF:RF,vol:vv,
+  return {items:items,total:total,byGrp:byGrp,byProc:byProc,direct:direct,hcProc:hcProc,hcTot:hcTot,heads:heads,need:need,RF:RF,vol:vv,
           dist:byGrp['Distribución'],whse:total-byGrp['Distribución']};
 }
 
 /* ---------- Calibración ---------- */
 UREF=volFor(P0).units;LREF=volFor(P0).lines;
+var DRV={r_pik:'lines',r_rea:'lines',r_ctr:'units',r_sep:'units',r_maq:'units',r_des:'orders',m_rch:'units',m_op:'lines',m_tp:'units',m_zm:'units',m_cr:'units'};
+var DRVL={lines:'líneas',units:'unidades',orders:'órdenes'};
+(function(){var v0=volFor(P0);DEF.forEach(function(l){var d=DRV[l.id];if(!d)return;l.drv=d;var q=l.t==='rol'?l.heads:l.qty,vol=d==='lines'?v0.lines:(d==='units'?v0.units:v0.orders);l.cap=q>0?vol/P0.days/q:0});})();
+L=clone(DEF);
+HC0=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),1).hcTot;
 var rawBase=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),1);
 K=PERSONAL_SHEET/rawBase.byGrp['Personal'];
 var BASE=compute(P0,DEF,TRIPS.map(function(){return [0,0]}),K);
 
 /* ---------- Render: estructura ---------- */
-var TABS=[['resumen','Resumen'],['simulacion','Simulación'],['evolucion','Evolución del CD'],['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
+var TABS=[['resumen','Resumen'],['simulacion','Simulación'],['capacidad','Capacidad'],['evolucion','Evolución del CD'],['concepto','Por concepto'],['openbook','Aumentos Open Book'],['personal','Personal'],['equipos','Equipos y almacenaje'],['otros','Transporte y otros'],['asig','Asignación'],['sens','Sensibilidad']];
 function buildTabs(){
   var h='';TABS.forEach(function(t,i){h+='<button role="tab" data-tab="'+t[0]+'" aria-selected="'+(i===0)+'">'+t[1]+'</button>'});
   $('tabs').innerHTML=h;
@@ -598,20 +614,21 @@ function num(id,key,val,cls,step,pct){
   var v=pct?+(val*100).toFixed(4):val;
   return '<input type="number" class="'+(cls||'')+'" data-id="'+id+'" data-k="'+key+'" data-pct="'+(pct?1:0)+'" step="'+(step||'any')+'" value="'+v+'">';
 }
+function capCell(l){return l.drv&&l.cap?num(l.id,'cap',+l.cap.toFixed(2),'',1)+' <span class="muted">'+DRVL[l.drv]+'/día</span>':'—'}
 function buildTables(){
   var h,i;
   // Personal
-  h='<thead><tr><th>Rol</th><th>HC base</th><th>$/día por HC</th><th>Elasticidad</th><th>Productividad Δ%</th><th>HC escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  h='<thead><tr><th>Rol</th><th>HC base</th><th>$/día por HC</th><th>Elasticidad</th><th>Capacidad por persona por día</th><th>Productividad Δ%</th><th>HC escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
   L.forEach(function(l){
-    if(l.t==='mgmt')h+='<tr><td class="name">'+l.n+' <span class="pill">fijo mensual</span></td><td>1</td><td>'+num(l.id,'monthly',l.monthly,'',1000)+'</td><td>—</td><td>—</td><td>1</td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
-    if(l.t==='rol')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'heads',l.heads,'s',0.01)+'</td><td>'+num(l.id,'daily',l.daily,'',100)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td>'+num(l.id,'prod',l.prod,'s',1,true)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
+    if(l.t==='mgmt')h+='<tr><td class="name">'+l.n+' <span class="pill">fijo mensual</span></td><td>1</td><td>'+num(l.id,'monthly',l.monthly,'',1000)+'</td><td>—</td><td>—</td><td>—</td><td>1</td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
+    if(l.t==='rol')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'heads',l.heads,'s',0.01)+'</td><td>'+num(l.id,'daily',l.daily,'',100)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td>'+capCell(l)+'</td><td>'+num(l.id,'prod',l.prod,'s',1,true)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>';
   });
-  h+='<tr><td class="name">HHEE y adicionales <span class="pill">% sobre personal</span></td><td></td><td></td><td></td><td></td><td></td><td data-b="hhee"></td><td data-c="hhee"></td></tr>';
-  h+='<tr class="tot"><td>Total personal + HHEE</td><td></td><td></td><td></td><td></td><td id="hcTotCell"></td><td id="persBase"></td><td id="persEsc"></td></tr></tbody>';
+  h+='<tr><td class="name">HHEE y adicionales <span class="pill">% sobre personal</span></td><td></td><td></td><td></td><td></td><td></td><td></td><td data-b="hhee"></td><td data-c="hhee"></td></tr>';
+  h+='<tr class="tot"><td>Total personal + HHEE</td><td></td><td></td><td></td><td></td><td></td><td id="hcTotCell"></td><td id="persBase"></td><td id="persEsc"></td></tr></tbody>';
   $('tPersonal').innerHTML=h;
   // Maquinaria
-  h='<thead><tr><th>Equipo</th><th>Cantidad base</th><th>$/mes por equipo</th><th>Elasticidad</th><th>Cant. escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
-  L.forEach(function(l){if(l.t==='maq')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'qty',l.qty,'s',1)+'</td><td>'+num(l.id,'unit',l.unit,'',1000)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>'});
+  h='<thead><tr><th>Equipo</th><th>Cantidad base</th><th>$/mes por equipo</th><th>Elasticidad</th><th>Capacidad por equipo por día</th><th>Cant. escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
+  L.forEach(function(l){if(l.t==='maq')h+='<tr><td class="name">'+l.n+'</td><td>'+num(l.id,'qty',l.qty,'s',1)+'</td><td>'+num(l.id,'unit',l.unit,'',1000)+'</td><td>'+num(l.id,'e',l.e,'s',0.05)+'</td><td>'+capCell(l)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>'});
   h+='</tbody>';$('tMaq').innerHTML=h;
   h='<thead><tr><th>Tipo de posición</th><th>Posiciones base</th><th>$/posición/día</th><th>Posiciones escenario</th><th>Base (M)</th><th>Escenario (M)</th></tr></thead><tbody>';
   L.forEach(function(l){if(l.t==='alm')h+='<tr><td class="name">'+l.n+(l.adu?' <span class="pill">sigue Δ importaciones</span>':'')+'</td><td>'+num(l.id,'qty',l.qty,'s',10)+'</td><td>'+num(l.id,'rate',l.rate,'',1)+'</td><td data-h="'+l.id+'"></td><td data-b="'+l.id+'"></td><td data-c="'+l.id+'"></td></tr>'});
@@ -716,6 +733,7 @@ function render(){
   var vv=R.vol;
   $('volTxt').innerHTML=lbl(P.month)+': '+f0(vv.orders)+' órdenes · '+nf2.format(vv.units/1e6)+' M unidades · '+f0(vv.lines/1000)+' k líneas';
   renderSim(R);
+  renderCap(R);
 }
 
 /* ---------- Evolución del CD ---------- */
@@ -842,6 +860,16 @@ function renderEvo(){
   h+='<tr class="tot"><td>Total por línea</td>'+proj.map(function(o){return '<td>'+f0(o.cLineArs)+'</td>'}).join('')+'<td class="'+dcls(delta(proj[proj.length-1].cLineArs,proj[0].cLineArs))+'">'+sg(delta(proj[proj.length-1].cLineArs,proj[0].cLineArs))+'</td></tr></tbody>';
   $('evProc').innerHTML=h;
 }
+function renderCap(R){
+  var v=R.vol,d=P.days;
+  $('capFlow').innerHTML='<div class="fl"><span>Órdenes por día</span><b>'+f0(v.orders/d)+'</b></div><div class="fl"><span>Unidades por día</span><b>'+f0(v.units/d)+'</b></div><div class="fl out"><span>Líneas por día</span><b>'+f0(v.lines/d)+'</b></div><div class="fl"><span>Días operativos</span><b>'+d+'</b></div>';
+  var h='<thead><tr><th>Recurso</th><th>Se mide en</th><th>Trabajo por día</th><th>Capacidad por unidad</th><th>Necesidad</th><th>Asignado</th><th>Utilización</th><th>Holgura por día</th></tr></thead><tbody>';
+  R.items.forEach(function(it){var l=it.l;if(!l.drv||!l.cap)return;
+    var vol=(l.drv==='lines'?v.lines:(l.drv==='units'?v.units:v.orders))/d,asg=R.heads[l.id],cap=l.cap*(1+(l.prod||0)),util=vol/(asg*cap),slack=asg*cap-vol;
+    h+='<tr><td class="name">'+l.n+'</td><td style="text-align:left">'+DRVL[l.drv]+'</td><td>'+f0(vol)+'</td><td>'+f0(cap)+'</td><td>'+nf1.format(vol/cap)+'</td><td>'+nf1.format(asg)+'</td><td class="'+(util>1.0001?'up':'')+'">'+pc(util,0)+'</td><td>'+(slack>=0?f0(slack):'<span class="up">−'+f0(-slack)+'</span>')+'</td></tr>';
+  });
+  $('capTable').innerHTML=h+'</tbody>';
+}
 function stateOf(acc,u){return acc>=u?'<span class="pill" style="background:var(--bad);color:#fff">Dispara</span>':(acc>=u*0.6?'<span class="pill" style="color:var(--warn)">Atención</span>':'<span class="pill">Tranquilo</span>')}
 function renderOB(){
   var Fx=obFactors(P),ind=Fx.ind,RF=relFactors(P),u=OB_CFG.umbral/100,h;
@@ -940,7 +968,7 @@ function syncParams(){
   $('p_month').innerHTML=OB_SIM.map(function(m){return '<option value="'+m+'"'+(m===P.month?' selected':'')+'>'+lbl(m)+'</option>'}).join('');
   OBF.forEach(function(f){$('infl_'+f).value=P.infl[f]});
   Object.keys(PF).forEach(function(k){var el=$('p_'+k);el.value=PF[k]?+(P[k]*100).toFixed(3):P[k]});
-  $('p_round').checked=P.round;$('p_prorate').checked=P.prorate;
+  $('p_round').checked=P.round;$('p_capMode').value=P.capMode?'cap':'ela';$('p_prorate').checked=P.prorate;
 }
 function bind(){
   Object.keys(PF).forEach(function(k){
@@ -951,6 +979,7 @@ function bind(){
   document.addEventListener('change',function(e){var t=e.target;if(t.tagName==='SELECT'&&t.hasAttribute('data-ns')){var q=t.getAttribute('data-ns').split('|');P.sim.ns[+q[0]][q[1]]=t.value;render()}});
   document.addEventListener('click',function(e){var b=e.target.closest('button');if(b&&b.hasAttribute('data-nsdel')){P.sim.ns.splice(+b.getAttribute('data-nsdel'),1);buildNs();render()}});
   $('ns_add').addEventListener('click',function(){P.sim.ns.push({n:'Nueva tienda',open:'2027-05',reg:AVG_TIPO,canib:15});buildNs();render()});
+  $('p_capMode').addEventListener('change',function(e){P.capMode=e.target.value==='cap';render()});
   $('p_round').addEventListener('change',function(e){P.round=e.target.checked;render()});
   $('p_prorate').addEventListener('change',function(e){P.prorate=e.target.checked;render()});
   document.addEventListener('input',function(e){
